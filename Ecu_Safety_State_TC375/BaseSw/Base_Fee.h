@@ -25,8 +25,8 @@
  * IN THE SOFTWARE.
  *********************************************************************************************************************/
 
-#ifndef FLASH_EEPROM_H_
-#define FLASH_EEPROM_H_
+#ifndef BASE_FEE_H_
+#define BASE_FEE_H_
 
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
@@ -83,4 +83,4 @@ typedef struct {
 void Flash_LoadProfileTable(UserProfile_t* outTable);
 void Flash_SaveProfileTable(UserProfile_t* inTable);
 
-#endif /* FLASH_EEPROM_H_ */
+#endif /* BASE_FEE_H_ */
