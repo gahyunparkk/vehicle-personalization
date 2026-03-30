@@ -1,5 +1,5 @@
 /**********************************************************************************************************************
- * \file Flash_EEPROM.c
+ * \file STM_Interrupt.c
  * \copyright Copyright (C) Infineon Technologies AG 2019
  *
  * Use of this file is subject to the terms of use agreed between (i) you or the
@@ -35,21 +35,25 @@
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
-
-#include "Flash_EEPROM.h"
-#include "IfxFlash.h"
-#include "IfxScuWdt.h"
+#include "STM_Interrupt.h"
+#include "Bsp.h"
+#include "IfxPort.h"
+#include "IfxStm.h"
 
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
-
-#define DFLASH_START_ADDR 0xAF000000
+#define ISR_PRIORITY_STM 40
+#define TIMER_INT_TIME   500
+#define LED              &MODULE_P00, 5
+#define STM              &MODULE_STM0
 
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global
  * variables--------------------------------------------------*/
 /*********************************************************************************************************************/
+IfxStm_CompareConfig g_STMConf;
+Ifx_TickTime         g_ticksFor500ms;
 
 /*********************************************************************************************************************/
 /*--------------------------------------------Private
@@ -60,54 +64,57 @@
 /*------------------------------------------------Function
  * Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
+void initSTM(void);
 
 /*********************************************************************************************************************/
 /*---------------------------------------------Function
  * Implementations----------------------------------------------*/
 /*********************************************************************************************************************/
+IFX_INTERRUPT(isrSTm, 0, ISR_PRIORITY_STM);
 
 void
-Flash_LoadProfileTable (UserProfile_t *outTable)
+isrSTM (void)
 {
-    UserProfile_t *flashData = (UserProfile_t *)DFLASH_START_ADDR;
-    for (int i = 0; i < MAX_PROFILES; i++)
-    {
-        outTable[i] = flashData[i];
-    }
+    IfxStm_increaseCompare(STM, g_STMConf.comparator, g_ticksFor500ms);
+    IfxPort_setPinState(LED, IfxPort_State_toggled);
 }
 
+/* Function to initialize the LED */
 void
-Flash_SaveProfileTable (UserProfile_t *inTable)
+initLED (void)
 {
-    uint16 endInitPassword = IfxScuWdt_getSafetyWatchdogPassword();
+    IfxPort_setPinMode(
+        LED, IfxPort_Mode_outputPushPullGeneral); /* Initialize LED port pin */
+    IfxPort_setPinState(
+        LED, IfxPort_State_high); /* Turn off LED (LED is low-level active) */
+}
 
-    IfxScuWdt_clearSafetyEndinit(endInitPassword);
-    IfxFlash_eraseMultipleSectors(DFLASH_START_ADDR, 1);
-    IfxScuWdt_setSafetyEndinit(endInitPassword);
+/* Function to initialize the STM */
+void
+initSTM (void)
+{
+    IfxStm_initCompareConfig(&g_STMConf); /* Initialize the configuration
+                                             structure with default values   */
 
-    IfxFlash_waitUnbusy(0, IfxFlash_FlashType_D0);
+    g_STMConf.triggerPriority
+        = ISR_PRIORITY_STM; /* Set the priority of the interrupt */
+    g_STMConf.typeOfService
+        = IfxSrc_Tos_cpu0; /* Set the service provider for the interrupts */
+    g_STMConf.ticks
+        = g_ticksFor500ms; /* Set the number of ticks after which the timer
+                            * triggers an interrupt for the first time */
+    IfxStm_initCompare(
+        STM, &g_STMConf); /* Initialize the STM with the user configuration */
+}
 
-    // Table 전체(80바이트)를 4바이트 배열로 casting
-    uint32 *dataPtr = (uint32 *)inTable;
+/* Function to initialize all the peripherals and variables used */
+void
+initPeripherals (void)
+{
+    /* Initialize time constant */
+    g_ticksFor500ms
+        = IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, TIMER_INT_TIME);
 
-    // 1인당 2 page: 총 10 pages
-    int totalPages = MAX_PROFILES * 2;
-
-    for (int page = 0; page < totalPages; page++)
-    {
-        uint32 pageAddr = DFLASH_START_ADDR + (page * 8);
-
-        IfxFlash_enterPageMode(pageAddr);
-        IfxFlash_waitUnbusy(0, IfxFlash_FlashType_D0);
-
-        // 8Bytes씩 읽어 옴
-        IfxFlash_loadPage2X32(
-            pageAddr, dataPtr[page * 2], dataPtr[page * 2 + 1]);
-
-        IfxScuWdt_clearSafetyEndinit(endInitPassword);
-        IfxFlash_writePage(pageAddr);
-        IfxScuWdt_setSafetyEndinit(endInitPassword);
-
-        IfxFlash_waitUnbusy(0, IfxFlash_FlashType_D0);
-    }
+    initLED(); /* Initialize the port pin to which the LED is connected */
+    initSTM(); /* Configure the STM module */
 }
