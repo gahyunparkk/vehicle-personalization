@@ -1,0 +1,27 @@
+# 전부 무시
+*
+
+# 폴더 구조 유지
+!*/
+
+# 추적할 소스 폴더 내 파일
+!*.c
+!*.h
+
+# 스크립트/문서
+!*.sh
+!*.md
+
+# 기타
+!.gitkeep
+!.gitignore
+
+# 명시적으로 무시 (ADS 자동 생성)
+Includes/
+Libraries/
+Configurations/
+Debug/
+Release/
+.settings/
+.project
+.cproject
