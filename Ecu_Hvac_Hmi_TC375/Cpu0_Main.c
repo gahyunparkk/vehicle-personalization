@@ -57,17 +57,11 @@ void core0_main(void)
                            IfxPort_OutputIdx_general);
   initAmbient();
 
-  setNeopixelColor(0, 200, 200, 200);
-  setNeopixelColor(1, 200, 200, 200);
-  setNeopixelColor(2, 200, 200, 200);
-  setNeopixelColor(3, 200, 200, 200);
-  setNeopixelColor(4, 200, 200, 200);
-
   while (1)
   {
     volatile int i = 100000000;
     IfxPort_togglePin(LED1.port, LED1.pinIndex);
     while (i--);
-    transferData();
+    applyAmbient();
   }
 }
