@@ -88,7 +88,11 @@ Flash_SaveProfileTable (UserProfile_t *inTable)
     IfxFlash_waitUnbusy(0, IfxFlash_FlashType_D0);
 
     // Table 전체(80바이트)를 4바이트 배열로 casting
+<<<<<<< HEAD
     uint32 *dataPtr = (uint32 *)inTable;
+=======
+    uint32* dataPtr = (uint32*)inTable;
+>>>>>>> main
 
     // 1인당 2 page: 총 10 pages
     int totalPages = MAX_PROFILES * 2;
