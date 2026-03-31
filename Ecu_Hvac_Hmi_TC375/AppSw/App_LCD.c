@@ -1,4 +1,4 @@
-#include "LCD.h"
+#include "App_LCD.h"
 #include "IfxPort.h"
 #include "Ifx_Types.h"
 
