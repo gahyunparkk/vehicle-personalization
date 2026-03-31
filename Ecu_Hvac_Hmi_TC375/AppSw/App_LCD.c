@@ -76,7 +76,7 @@ static void writeoperation(uint8 op)
   delay_us(1);
 }
 
-void LCD_init(void)
+static void LCD_init_static(void)
 {
   init_I2C_module(), delay_us(50000);
 
@@ -96,6 +96,13 @@ void LCD_init(void)
   writeoperation(OP_CURSOROFF), delay_us(70);
   writeoperation(OP_UPPERLINE), delay_us(70);
   writeoperation(OP_RETURN), delay_us(70);
+}
+
+void LCD_init(void)
+{
+  LCD_init_static();
+  LCD_init_static();
+  LCD_init_static();
 }
 
 void LCD_clearScreen(void)
