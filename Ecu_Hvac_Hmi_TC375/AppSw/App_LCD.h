@@ -1,7 +1,7 @@
 #ifndef LCD_H_
 #define LCD_H_
 
-#include "I2C.h"
+#include "Base_I2C.h"
 
 #ifndef LCDENUM
 #define LCDENUM
