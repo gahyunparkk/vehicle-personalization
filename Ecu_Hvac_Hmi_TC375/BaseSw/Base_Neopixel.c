@@ -64,9 +64,8 @@
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
-qspiDma g_qspiDma; /* Global handle for QSPI communication             */
-uint8 spiTxBuffer[SPI_BUFFER_SIZE];
-uint8 spiRxBuffer[SPI_BUFFER_SIZE];
+static qspiDma g_qspiDma; /* Global handle for QSPI communication             */
+static uint8 spiTxBuffer[SPI_BUFFER_SIZE];
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
@@ -220,8 +219,14 @@ void shiftLedsForward(uint8 r, uint8 g, uint8 b)
       spiTxBuffer[destIndex + j] = spiTxBuffer[srcIndex + j];
     }
   }
-
   setNeopixelColor(0, r, g, b);
+}
+
+void shiftLedsForwardHSV(int h, int s, int v)
+{
+  uint8 r, g, b;
+  convertHSVtoRGB((float)h, s * 0.01f, v * 0.01f, &r, &g, &b);
+  shiftLedsForward(r, g, b);
 }
 
 // LED 색상을 앞으로 한 칸씩 당기는 함수 (예: 2번 -> 1번, 1번 -> 0번)
@@ -240,6 +245,13 @@ void shiftLedsBackward(uint8 r, uint8 g, uint8 b)
   }
 
   setNeopixelColor(NUM_LEDS - 1, r, g, b);
+}
+
+void shiftLedsBackwardHSV(int h, int s, int v)
+{
+  uint8 r, g, b;
+  convertHSVtoRGB((float)h, s * 0.01f, v * 0.01f, &r, &g, &b);
+  shiftLedsBackward(r, g, b);
 }
 
 // h: 0.0-360.0, s: 0.0-1.0, v: 0.0-1.0
@@ -276,7 +288,7 @@ void initNeopixel(void)
 
 void transmitNeopixel(void)
 {
-  IfxQspi_SpiMaster_exchange(&g_qspiDma.spiMasterChannel, spiTxBuffer, spiRxBuffer, SPI_BUFFER_SIZE);
+  IfxQspi_SpiMaster_exchange(&g_qspiDma.spiMasterChannel, spiTxBuffer, NULL_PTR, SPI_BUFFER_SIZE);
 }
 
 void setAllLEDColorHSV(int h, int s, int v)

@@ -37,7 +37,7 @@
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
-#define NUM_LEDS          20
+#define NUM_LEDS          4
 #define SPI_BYTES_PER_LED 9
 #define RESET_BYTES       60
 #define SPI_BUFFER_SIZE   (NUM_LEDS * SPI_BYTES_PER_LED) + RESET_BYTES /* SPI Buffer size */
@@ -58,7 +58,9 @@ typedef struct
 void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue);
 void setNeopixelColorHSV(uint32 ledIndex, uint8 hue, uint8 sat, uint8 val);
 void shiftLedsForward(uint8 r, uint8 g, uint8 b);
+void shiftLedsForwardHSV(int hue, int sat, int val);
 void shiftLedsBackward(uint8 r, uint8 g, uint8 b);
+void shiftLedsBackwardHSV(int hue, int sat, int val);
 void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8 *b);
 void initNeopixel(void);                     // 초기 설정
 void transmitNeopixel(void);                 // 현재 설정된 색 전송
