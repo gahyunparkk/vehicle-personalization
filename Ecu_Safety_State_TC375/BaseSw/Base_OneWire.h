@@ -4,7 +4,6 @@
 #include "Platform_Types.h"
 #include "IfxPort.h"
 
-
 typedef struct {
         Ifx_P*  port;
         uint8   pinIndex;
@@ -55,6 +54,10 @@ void  OneWire_SelectWithPointer(OneWire_t* OneWireStruct, uint8* ROM);
 uint8 OneWire_CRC8(uint8* addr, uint8 len);
 uint8 OneWire_isBusyLine();
 
+
+void  ONEWIRE_DELAY(uint16 time_us);
+void  ONEWIRE_DRIVE_LOW(OneWire_t* gp);
+void  ONEWIRE_RELEASE(OneWire_t* gp);
 
 //#######################################################################################################
 

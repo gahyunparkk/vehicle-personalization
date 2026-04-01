@@ -1,7 +1,7 @@
 #include "Base_Ds18b20.h"
 #include "Platform_Types.h"
 #include "Bsp.h"
-
+#include "UART_Config.h"
 #define false 0
 #define true  1
 
@@ -57,7 +57,6 @@ uint8 Ds18b20_IsConverting() {
 uint8 Ds18b20_InitSimple() {
     m_init = 0;
     OneWire_Init(&OneWire, _DS18B20_GPIO ,_DS18B20_PIN);
-    //OneWire_First(&OneWire);
 
     OneWire.ROM_NO[0] = 0x28;
     OneWire.ROM_NO[1] = 0xdd;
@@ -75,39 +74,6 @@ uint8 Ds18b20_InitSimple() {
     Ds18b20_DisableAlarmTemperature(&OneWire,  ds18b20[0].Address);
     m_init = 1;
     TempSensorCount++;
-    return true;
-}
-
-uint8 Ds18b20_Init(void) {
-    uint8 Ds18b20TryToFind=5;
-    do
-    {
-        OneWire_Init(&OneWire, _DS18B20_GPIO ,_DS18B20_PIN);
-        TempSensorCount = 0;
-        while(Ds18b20_GetTickMs() < 3000)
-            Ds18b20_DelayMs(100);
-        OneWireDevices = OneWire_First(&OneWire); //주소를 찾는 동작.
-        while (OneWireDevices)
-        {
-            Ds18b20_DelayMs(100);
-            TempSensorCount++;
-            OneWire_GetFullROM(&OneWire, ds18b20[TempSensorCount-1].Address);
-            OneWireDevices = OneWire_Next(&OneWire); //다음 장치 주소 찾는 동작.
-        }
-        if(TempSensorCount>0)
-            break;
-        Ds18b20TryToFind--;
-    }while(Ds18b20TryToFind>0);
-    if(Ds18b20TryToFind==0)
-        return false;
-
-    for (uint8 i = 0; i < TempSensorCount; i++)
-    {
-        Ds18b20_DelayMs(50);
-        Ds18b20_SetResolution(&OneWire, ds18b20[i].Address, Ds18b20_Resolution_12bits);
-        Ds18b20_DelayMs(50);
-    Ds18b20_DisableAlarmTemperature(&OneWire, ds18b20[i].Address);
-    }
     return true;
 }
 
@@ -172,6 +138,7 @@ uint8 Ds18b20_Start(OneWire_t* OneWire, uint8 *ROM)
     OneWire_Reset(OneWire);
     /* Select ROM number */
     OneWire_SelectWithPointer(OneWire, ROM);
+
     /* Start temperature conversion */
     OneWire_WriteByte(OneWire, DS18B20_CMD_CONVERTTEMP);
 
@@ -188,6 +155,7 @@ void Ds18b20_StartAll(OneWire_t* OneWire)
     /* Start conversion on all connected devices */
     OneWire_WriteByte(OneWire, DS18B20_CMD_CONVERTTEMP);
 }
+
 
 uint8 Ds18b20_Read(OneWire_t* OneWire, uint8 *ROM, float *destination)
 {
@@ -329,12 +297,11 @@ uint8 Ds18b20_SetResolution(OneWire_t* OneWire, uint8 *ROM, DS18B20_Resolution_t
     if (!Ds18b20_Is(ROM))
         return false;
 
-
-    /* Reset line */
+    /* 1. Reset line */
     OneWire_Reset(OneWire);
-    /* Select ROM number */
+    /* 2. Select ROM number */
     OneWire_SelectWithPointer(OneWire, ROM);
-    /* Read scratchpad command by onewire protocol */
+    /* 3. Read scratchpad command by onewire protocol */
     OneWire_WriteByte(OneWire, ONEWIRE_CMD_RSCRATCHPAD);
 
     /* Ignore first 2 bytes */
@@ -563,5 +530,40 @@ uint8 Ds18b20_AllDone(OneWire_t* OneWire)
     /* If read bit is low, then device is not finished yet with calculation temperature */
     return OneWire_ReadBit(OneWire);
 }
+
+//###########################################################################################
+
+//uint8 Ds18b20_Init(void) {
+//    uint8 Ds18b20TryToFind=5;
+//    do
+//    {
+//        OneWire_Init(&OneWire, _DS18B20_GPIO ,_DS18B20_PIN);
+//        TempSensorCount = 0;
+//        while(Ds18b20_GetTickMs() < 3000)
+//            Ds18b20_DelayMs(100);
+//        OneWireDevices = OneWire_First(&OneWire); //주소를 찾는 동작.
+//        while (OneWireDevices)
+//        {
+//            Ds18b20_DelayMs(100);
+//            TempSensorCount++;
+//            OneWire_GetFullROM(&OneWire, ds18b20[TempSensorCount-1].Address);
+//            OneWireDevices = OneWire_Next(&OneWire); //다음 장치 주소 찾는 동작.
+//        }
+//        if(TempSensorCount>0)
+//            break;
+//        Ds18b20TryToFind--;
+//    }while(Ds18b20TryToFind>0);
+//    if(Ds18b20TryToFind==0)
+//        return false;
+//
+//    for (uint8 i = 0; i < TempSensorCount; i++)
+//    {
+//        Ds18b20_DelayMs(50);
+//        Ds18b20_SetResolution(&OneWire, ds18b20[i].Address, Ds18b20_Resolution_12bits);
+//        Ds18b20_DelayMs(50);
+//    Ds18b20_DisableAlarmTemperature(&OneWire, ds18b20[i].Address);
+//    }
+//    return true;
+//}
 
 

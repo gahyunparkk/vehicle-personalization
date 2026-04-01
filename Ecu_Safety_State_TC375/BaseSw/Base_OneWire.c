@@ -44,12 +44,12 @@ void ONEWIRE_DELAY(uint16 time_us)
     waitTime(IfxStm_getTicksFromMicroseconds(BSP_DEFAULT_TIMER, time_us));
 }
 
-void ONEWIRE_LOW(OneWire_t* gp)
+void ONEWIRE_DRIVE_LOW(OneWire_t* gp)
 {
     IfxPort_setPinLow(gp->DQ.port, gp->DQ.pinIndex);
 }
 
-void ONEWIRE_HIGH(OneWire_t* gp)
+void ONEWIRE_RELEASE(OneWire_t* gp)
 {
     IfxPort_setPinHigh(gp->DQ.port, gp->DQ.pinIndex);
 }
@@ -67,43 +67,30 @@ void OneWire_Init(OneWire_t* OneWireStruct, Ifx_P* port, uint8 pinIndex)
 
     OneWireStruct->DQ.port = port;
     OneWireStruct->DQ.pinIndex = pinIndex;
+
     IfxPort_setPinMode(port, pinIndex, IfxPort_Mode_outputOpenDrainGeneral);
 
-
-    // TODO: ONEWIRE_OUTPUT(OneWireStruct);
-    ONEWIRE_HIGH(OneWireStruct);
-    ONEWIRE_DELAY(1000);
-    ONEWIRE_LOW(OneWireStruct);
-    ONEWIRE_DELAY(1000);
-    ONEWIRE_HIGH(OneWireStruct);
-    ONEWIRE_DELAY(2000);
+    ONEWIRE_RELEASE(OneWireStruct);
 }
 
 
 uint8 OneWire_Reset(OneWire_t* OneWireStruct)
 {
-    uint8 i;
+    uint8 presence;
 
-    /* Line low, and wait 480us */
-    ONEWIRE_LOW(OneWireStruct);
+    ONEWIRE_DRIVE_LOW(OneWireStruct);
     ONEWIRE_DELAY(480);
-    ONEWIRE_DELAY(20);
 
-    /* Release line and wait for 70us */
-    //ONEWIRE_BUSY_ON();
-
+    ONEWIRE_RELEASE(OneWireStruct);
     ONEWIRE_DELAY(70);
-    /* Check bit value */
-    i = IfxPort_getPinState(OneWireStruct->DQ.port, OneWireStruct->DQ.pinIndex);
 
-    //ONEWIRE_BUSY_OFF();
+    presence = IfxPort_getPinState(OneWireStruct->DQ.port, OneWireStruct->DQ.pinIndex);
 
-    /* Delay for 410 us */
     ONEWIRE_DELAY(410);
 
-    /* Return value of presence pulse, 0 = OK, 1 = ERROR */
-    return i;
+    return presence; // 0: presence detected, 1: no device
 }
+
 
 
 void OneWire_WriteBit(OneWire_t* OneWireStruct, uint8 bit)
@@ -111,43 +98,23 @@ void OneWire_WriteBit(OneWire_t* OneWireStruct, uint8 bit)
     if (bit)
     {
         /* Set line low */
-        //ONEWIRE_BUSY_ON();
-        ONEWIRE_LOW(OneWireStruct);
-        //ONEWIRE_OUTPUT(OneWireStruct);
+        ONEWIRE_DRIVE_LOW(OneWireStruct);
         ONEWIRE_DELAY(10);
-        //ONEWIRE_BUSY_OFF();
-
-        /* Bit high */
-        //ONEWIRE_BUSY_ON();
-        //ONEWIRE_INPUT(OneWireStruct);
-        //ONEWIRE_BUSY_OFF();
 
         /* Wait for 55 us and release the line */
+        ONEWIRE_RELEASE(OneWireStruct);
         ONEWIRE_DELAY(55);
-
-        //ONEWIRE_BUSY_ON();
-        //ONEWIRE_INPUT(OneWireStruct);
-        //ONEWIRE_BUSY_OFF();
     }
     else
     {
         /* Set line low */
-        //ONEWIRE_BUSY_ON();
-        ONEWIRE_LOW(OneWireStruct);
-        //ONEWIRE_OUTPUT(OneWireStruct);
-        //ONEWIRE_BUSY_OFF();
+        ONEWIRE_DRIVE_LOW(OneWireStruct);
         ONEWIRE_DELAY(65);
 
-
         /* Bit high */
-        //ONEWIRE_BUSY_ON();
-        //ONEWIRE_INPUT(OneWireStruct);
         /* Wait for 5 us and release the line */
-
+        ONEWIRE_RELEASE(OneWireStruct);
         ONEWIRE_DELAY(5);
-
-        // TODO: ONEWIRE_INPUT(OneWireStruct);
-        //ONEWIRE_BUSY_OFF();
     }
 }
 
@@ -157,20 +124,17 @@ uint8 OneWire_ReadBit(OneWire_t* OneWireStruct)
     uint8  bit = 0;
 
     /* Line low: start read time slot */
-    //ONEWIRE_BUSY_ON();
-    ONEWIRE_LOW(OneWireStruct);
-    //ONEWIRE_OUTPUT(OneWireStruct);
+    ONEWIRE_DRIVE_LOW(OneWireStruct);
     ONEWIRE_DELAY(2);
 
     /* Release line */
-    // TODO: ONEWIRE_INPUT(OneWireStruct);
+    ONEWIRE_RELEASE(OneWireStruct);
     ONEWIRE_DELAY(10);
 
     /* Read line value */
     if (IfxPort_getPinState(OneWireStruct->DQ.port, OneWireStruct->DQ.pinIndex)) {
         bit = 1;
     }
-    //ONEWIRE_BUSY_OFF();
 
     /* Wait 50us to complete 60us period */
     ONEWIRE_DELAY(50);
@@ -225,43 +189,45 @@ void OneWire_ResetSearch(OneWire_t* OneWireStruct) {
 }
 
 
-int OneWire_Verify(OneWire_t* OneWireStruct) {
+int OneWire_Verify(OneWire_t* OneWireStruct)
+{
     unsigned char rom_backup[8];
-    uint8 i,rslt,ld_backup,ldf_backup,lfd_backup;
+    uint8 i, rslt, ld_backup, ldf_backup, lfd_backup;
 
-    // keep a backup copy of the current state
     for (i = 0; i < 8; i++)
-    rom_backup[i] = OneWireStruct->ROM_NO[i];
-    ld_backup = OneWireStruct->LastDiscrepancy;
+        rom_backup[i] = OneWireStruct->ROM_NO[i];
+
+    ld_backup  = OneWireStruct->LastDiscrepancy;
     ldf_backup = OneWireStruct->LastDeviceFlag;
     lfd_backup = OneWireStruct->LastFamilyDiscrepancy;
 
-    // set search to find the same device
     OneWireStruct->LastDiscrepancy = 64;
-    OneWireStruct->LastDeviceFlag = 0;
+    OneWireStruct->LastDeviceFlag  = 0;
 
-    if (OneWire_Search(OneWireStruct, ONEWIRE_CMD_SEARCHROM)) {
-        // check if same device found
+    if (OneWire_Search(OneWireStruct, ONEWIRE_CMD_SEARCHROM))
+    {
         rslt = 1;
-        for (i = 0; i < 8; i++) {
-            if (rom_backup[i] != OneWireStruct->ROM_NO[i]) {
-                rslt = 1;
+        for (i = 0; i < 8; i++)
+        {
+            if (rom_backup[i] != OneWireStruct->ROM_NO[i])
+            {
+                rslt = 0;
                 break;
             }
         }
-    } else {
+    }
+    else
+    {
         rslt = 0;
     }
 
-    // restore the search state
-    for (i = 0; i < 8; i++) {
+    for (i = 0; i < 8; i++)
         OneWireStruct->ROM_NO[i] = rom_backup[i];
-    }
-    OneWireStruct->LastDiscrepancy = ld_backup;
-    OneWireStruct->LastDeviceFlag = ldf_backup;
+
+    OneWireStruct->LastDiscrepancy       = ld_backup;
+    OneWireStruct->LastDeviceFlag        = ldf_backup;
     OneWireStruct->LastFamilyDiscrepancy = lfd_backup;
 
-    // return the result of the verify
     return rslt;
 }
 

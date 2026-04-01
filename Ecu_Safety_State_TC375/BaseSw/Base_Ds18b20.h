@@ -20,6 +20,8 @@ typedef struct
 extern Ds18b20Sensor_t  ds18b20[_DS18B20_MAX_SENSORS];
 extern Ds18b20Sensor_t  temp_sensor;
 
+extern OneWire_t        OneWire; // 나중에 지울거임 (TODO: DELETE)
+
 //###################################################################################
 /* Every onewire chip has different ROM code, but all the same chips has same family code */
 /* in case of DS18B20 this is 0x28 and this is first byte of ROM address */
@@ -75,6 +77,8 @@ uint8     Ds18b20_IsConverting(void);
 void      Ds18b20_StartConverting(void);
 void      Ds18b20_CheckConverting(void);
 float     Ds18b20_ReadTemperValue(void);
+
+void      Ds18b20_DelayMs(uint16 time_ms);
 
 
 //###################################################################################
