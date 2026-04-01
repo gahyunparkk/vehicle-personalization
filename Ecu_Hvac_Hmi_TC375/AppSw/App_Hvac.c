@@ -9,6 +9,11 @@ static uint8 cool_threshold;
 #define BLUELED &MODULE_P10, 2
 #define REDLED  &MODULE_P10, 1
 
+#define MIN_H_TH 0
+#define MAX_H_TH 22
+#define MIN_C_TH 18
+#define MAX_C_TH 30
+
 // 구현 필요한 함수
 // extern uint8 Hvac_getTemperature(void);
 
@@ -23,17 +28,35 @@ void Hvac_init(void)
   IfxPort_setPinModeOutput(REDLED, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
   IfxPort_setPinHigh(BLUELED);
   IfxPort_setPinHigh(REDLED);
+  heat_threshold = 18;
+  cool_threshold = 26;
   Fan_init();
 }
 
-void Hvac_setHeatThreshold(uint8 th)
+uint8 Hvac_setHeatThreshold(uint8 th)
 {
+  if (th < MIN_H_TH || th > MAX_H_TH || th + 2 >= cool_threshold)
+    return 1;
   heat_threshold = th;
+  return 0;
 }
 
-void Hvac_setCoolThreshold(uint8 th)
+uint8 Hvac_getHeatThreshold(void)
 {
+  return heat_threshold;
+}
+
+uint8 Hvac_setCoolThreshold(uint8 th)
+{
+  if (th < MIN_C_TH || th > MAX_C_TH || th - 2 <= heat_threshold)
+    return 1;
   cool_threshold = th;
+  return 0;
+}
+
+uint8 Hvac_getCoolThreshold(void)
+{
+  return cool_threshold;
 }
 
 void Hvac_updateHvac(void)

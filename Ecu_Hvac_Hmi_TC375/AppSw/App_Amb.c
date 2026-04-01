@@ -78,3 +78,8 @@ void Amb_changeColor(sint8 amount)
   baseh += amount + 360;
   baseh %= 360;
 }
+
+Amb_mode_e Amb_getmode(void)
+{
+  return ambmode;
+}
