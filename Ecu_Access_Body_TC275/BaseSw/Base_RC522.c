@@ -1,5 +1,5 @@
-#include "RC522_Driver.h"
-#include "SPI_Config.h"
+#include <BaseSw/Base_RC522.h>
+#include <BaseSw/Base_SPI_Config.h>
 #include "IfxPort.h"
 #include "IfxQspi_SpiMaster.h"
 

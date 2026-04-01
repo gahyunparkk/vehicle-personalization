@@ -1,4 +1,4 @@
-#include "SPI_Config.h"
+#include "Base_SPI_Config.h"
 #include "IfxPort.h"
 #include "IfxQspi_PinMap.h"
 #include "IfxScuWdt.h"
