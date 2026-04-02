@@ -2,10 +2,10 @@
 #include "IfxPort.h"
 #include "Ifx_Types.h"
 
-#define BACKLIGHT 0x8
-#define ENABLE    0x4
-#define READMODE  0x2
-#define REGSEL    0x1
+static uint8 BACKLIGHT = 0x8;
+#define ENABLE   0x4
+#define READMODE 0x2
+#define REGSEL   0x1
 
 #define OP_FUNCSET   (uint8)0x28
 #define OP_RESET     (uint8)0x30
@@ -13,7 +13,6 @@
 #define OP_CLEAR     (uint8)0x01
 #define OP_OFF       (uint8)0x08
 #define OP_MODESET   (uint8)0x06
-#define OP_CURSORON  (uint8)0x0F
 #define OP_CURSOROFF (uint8)0x0C
 #define OP_UPPERLINE (uint8)0x80
 #define OP_LOWERLINE (uint8)0xC0
@@ -46,6 +45,7 @@ static void delay_us(uint32 microSeconds)
 
 static void writechar(char ch)
 {
+  if (!BACKLIGHT) return;
   I2C_writeSingleByte(UPPER4BIT(ch) | BACKLIGHT | ENABLE | REGSEL);
   delay_us(1);
   I2C_writeSingleByte(UPPER4BIT(ch) | BACKLIGHT | REGSEL);
@@ -116,4 +116,15 @@ void LCD_printString(char *str, LCD_line_e line)
   else writeoperation(OP_LOWERLINE), delay_us(70);
   while (*str)
     writechar(*(str++));
+}
+
+void LCD_lightoff(void)
+{
+  BACKLIGHT = 0x0;
+  LCD_clearScreen();
+}
+
+void LCD_lighton(void)
+{
+  BACKLIGHT = 0x8;
 }

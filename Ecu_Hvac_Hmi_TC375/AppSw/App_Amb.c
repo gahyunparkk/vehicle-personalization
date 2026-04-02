@@ -83,3 +83,14 @@ Amb_mode_e Amb_getmode(void)
 {
   return ambmode;
 }
+
+void Amb_off(void)
+{
+  basev = 0;
+  ambmode = AMB_CONSTANT;
+}
+
+void Amb_on(void)
+{
+  basev = MAXVAL;
+}

@@ -15,5 +15,7 @@ typedef enum
 void LCD_init(void);
 void LCD_clearScreen(void);
 void LCD_printString(char *str, LCD_line_e line);
+void LCD_lightoff(void);
+void LCD_lighton(void);
 
 #endif

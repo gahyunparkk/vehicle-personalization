@@ -5,6 +5,8 @@ static void joydtask(void);
 static void joyltask(void);
 static void joyrtask(void);
 static void swtask(void);
+static uint8 getCurrentProfile(void);
+static void setCurrentProfile(uint8 prof);
 
 static enum {
   ST_PROFILE_SEL,
@@ -14,9 +16,23 @@ static enum {
   ST_HEATTEM_SEL
 } uistate;
 
+static char coolline[] = "+  Over        -";
+static char heatline[] = "+  Under       -";
+static char profline[] = "+  Profile 0   -";
+static uint8 profsel = 0;
+
 void UI_init(void)
 {
-  uistate = ST_AMB_COL_SEL;
+  LCD_init();
+  LCD_clearScreen();
+  Joystick_init();
+  Amb_init();
+  uistate = ST_PROFILE_SEL;
+  coolline[11] = 0xDF;
+  heatline[11] = 0xDF;
+  coolline[12] = 'C';
+  heatline[12] = 'C';
+  profsel = getCurrentProfile();
 }
 
 void UI_task(void)
@@ -40,8 +56,6 @@ void UI_task(void)
     case JOY_RIGHT:
       joyrtask();
       break;
-    default:;
-      // LCD_printString("NEUTRAL", UPPERLINE);
     }
   }
   prev = res;
@@ -62,49 +76,57 @@ void UI_task(void)
   Amb_transition();
 
   // LCD 출력
-  static char lowline[] = "+              -";
   static uint8 th = 0;
   switch (uistate)
   {
   case ST_PROFILE_SEL:
-    LCD_printString("<PROFILE SELECT>", UPPERLINE);
-    LCD_printString("+  PROFILE 01  -", LOWERLINE);
+    LCD_printString("<Profile Select>", UPPERLINE);
+    profline[12] = profsel + '0';
+    if (profsel == getCurrentProfile())
+      profline[2] = '[', profline[13] = ']';
+    else
+      profline[2] = ' ', profline[13] = ' ';
+    LCD_printString(profline, LOWERLINE);
     break;
+
   case ST_AMB_COL_SEL:
-    LCD_printString("<AMB COLOR SET >", UPPERLINE);
-    LCD_printString("+    COLOR     -", LOWERLINE);
+    LCD_printString("<Amb Color Set >", UPPERLINE);
+    LCD_printString("+    Color     -", LOWERLINE);
     break;
+
   case ST_AMB_MOD_SEL:
-    LCD_printString("< AMB MODE SET >", UPPERLINE);
+    LCD_printString("< Amb Mode Set >", UPPERLINE);
     switch (Amb_getmode())
     {
     case AMB_CONSTANT:
-      LCD_printString("+   CONSTANT   -", LOWERLINE);
+      LCD_printString("+   Constant   -", LOWERLINE);
       break;
     case AMB_BREATH:
-      LCD_printString("+    BREATH    -", LOWERLINE);
+      LCD_printString("+    Breath    -", LOWERLINE);
       break;
     case AMB_WAVE_L:
-      LCD_printString("+  WAVE(LEFT)  -", LOWERLINE);
+      LCD_printString("+  Wave(left)  -", LOWERLINE);
       break;
     case AMB_WAVE_R:
-      LCD_printString("+  WAVE(RIGHT) -", LOWERLINE);
+      LCD_printString("+  Wave(Right) -", LOWERLINE);
       break;
     }
     break;
+
   case ST_COOLTEM_SEL:
-    LCD_printString("< COOLING TEMP >", UPPERLINE);
+    LCD_printString("< Cooling When >", UPPERLINE);
     th = Hvac_getCoolThreshold();
-    lowline[7] = (th < 10 ? ' ' : (th / 10) + '0');
-    lowline[8] = (th % 10 + '0');
-    LCD_printString(lowline, LOWERLINE);
+    coolline[9] = (th < 10 ? ' ' : (th / 10) + '0');
+    coolline[10] = (th % 10 + '0');
+    LCD_printString(coolline, LOWERLINE);
     break;
+
   case ST_HEATTEM_SEL:
-    LCD_printString("< HEATING TEMP >", UPPERLINE);
+    LCD_printString("< Heating When >", UPPERLINE);
     th = Hvac_getHeatThreshold();
-    lowline[7] = (th < 10 ? ' ' : (th / 10) + '0');
-    lowline[8] = (th % 10 + '0');
-    LCD_printString(lowline, LOWERLINE);
+    heatline[9] = (th < 10 ? ' ' : (th / 10) + '0');
+    heatline[10] = (th % 10 + '0');
+    LCD_printString(heatline, LOWERLINE);
     break;
   }
 }
@@ -114,9 +136,10 @@ static void joyutask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
+    if (--profsel == 0) profsel = 5;
     break;
   case ST_AMB_COL_SEL:
-    Amb_changeColor(-30);
+    Amb_changeColor(-20);
     break;
   case ST_AMB_MOD_SEL:
     Amb_nextmode();
@@ -137,9 +160,10 @@ static void joydtask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
+    if (++profsel == 6) profsel = 1;
     break;
   case ST_AMB_COL_SEL:
-    Amb_changeColor(30);
+    Amb_changeColor(20);
     break;
   case ST_AMB_MOD_SEL:
     Amb_nextmode();
@@ -199,4 +223,29 @@ static void joyrtask()
 
 static void swtask(void)
 {
+  if (uistate == ST_PROFILE_SEL)
+  {
+    setCurrentProfile(profsel);
+  }
+  if (uistate == ST_AMB_COL_SEL)
+  {
+    LCD_lightoff();
+    Amb_off();
+  }
+  if (uistate == ST_AMB_MOD_SEL)
+  {
+    LCD_lighton();
+    Amb_on();
+  }
+}
+
+static uint8 cp = 1;
+static uint8 getCurrentProfile(void)
+{
+  return cp;
+}
+
+static void setCurrentProfile(uint8 prof)
+{
+  cp = prof;
 }
