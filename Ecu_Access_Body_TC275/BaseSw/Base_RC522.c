@@ -85,7 +85,7 @@ volatile uint8 dbg_fifo = 0U;
 static uint8        RC522_BuildReadAddr(uint8 reg);
 static uint8        RC522_BuildWriteAddr(uint8 reg);
 
-static Rc522_Status RC522_CalculateCrc(const uint8 *data, uint8 len, uint8 outCrc[2]);
+// static Rc522_Status RC522_CalculateCrc(const uint8 *data, uint8 len, uint8 outCrc[2]);
 static Rc522_Status RC522_Transceive(const uint8 *txData,
                                      uint8        txLen,
                                      uint8       *rxData,

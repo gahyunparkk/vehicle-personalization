@@ -20,7 +20,7 @@ typedef struct
 
 boolean      RC522_Init(void);
 uint8        RC522_ReadVersion(void);
-Rc522_Status RC522_Read_Uid(Rc522_Uid *outUid);
+Rc522_Status RC522_ReadUid(Rc522_Uid *outUid);
 Rc522_Status RC522_WakeupA(uint8 atqa[2]);
 Rc522_Status RC522_RequestA(uint8 atqa[2]);
 boolean      RC522_IsNewCardPresent(void);
