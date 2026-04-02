@@ -112,39 +112,37 @@ static uint8 RC522_BuildWriteAddr(uint8 reg)
     return (uint8)((reg << 1U) & 0x7EU);
 }
 
-static Rc522_Status RC522_CalculateCrc(const uint8 *data, uint8 len, uint8 outCrc[2])
-{
-    uint32 loop;
-
-    if ((data == NULL_PTR) || (len == 0U) || (outCrc == NULL_PTR))
-    {
-        return RC522_STATUS_ERROR;
-    }
-
-    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
-    RC522_WriteReg(RC522_REG_DIVIRQ, 0x04U);
-    RC522_WriteReg(RC522_REG_FIFOLEVEL, 0x80U);
-
-    RC522_WriteFifo(data, len);
-    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_CALCCRC);
-
-    for (loop = 0U; loop < 5000U; ++loop)
-    {
-        if ((RC522_ReadReg(RC522_REG_DIVIRQ) & 0x04U) != 0U)
-        {
-            outCrc[0] = RC522_ReadReg(RC522_REG_CRCRESULT_L);
-            outCrc[1] = RC522_ReadReg(RC522_REG_CRCRESULT_H);
-
-            RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
-            return RC522_STATUS_OK;
-        }
-    }
-
-    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
-    return RC522_STATUS_TIMEOUT;
-}
-
-
+//static Rc522_Status RC522_CalculateCrc(const uint8 *data, uint8 len, uint8 outCrc[2])
+//{
+//    uint32 loop;
+//
+//    if ((data == NULL_PTR) || (len == 0U) || (outCrc == NULL_PTR))
+//    {
+//        return RC522_STATUS_ERROR;
+//    }
+//
+//    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
+//    RC522_WriteReg(RC522_REG_DIVIRQ, 0x04U);
+//    RC522_WriteReg(RC522_REG_FIFOLEVEL, 0x80U);
+//
+//    RC522_WriteFifo(data, len);
+//    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_CALCCRC);
+//
+//    for (loop = 0U; loop < 5000U; ++loop)
+//    {
+//        if ((RC522_ReadReg(RC522_REG_DIVIRQ) & 0x04U) != 0U)
+//        {
+//            outCrc[0] = RC522_ReadReg(RC522_REG_CRCRESULT_L);
+//            outCrc[1] = RC522_ReadReg(RC522_REG_CRCRESULT_H);
+//
+//            RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
+//            return RC522_STATUS_OK;
+//        }
+//    }
+//
+//    RC522_WriteReg(RC522_REG_COMMAND, RC522_CMD_IDLE);
+//    return RC522_STATUS_TIMEOUT;
+//}
 
 Rc522_Status RC522_ReadUid(Rc522_Uid *outUid)
 {
@@ -154,6 +152,10 @@ Rc522_Status RC522_ReadUid(Rc522_Uid *outUid)
     uint8        rxLen;
     uint8        rxLastBits;
     uint8        bcc;
+    uint8        atqa[2]; // 응답 여부 및 UID 크기 정보 전달
+
+    // 아직 선택되지 않은 Type A 카드가 있는지 polling
+    // IDLE 상태 카드에 대한 호출
 
     if (outUid == NULL_PTR)
     {
@@ -166,6 +168,12 @@ Rc522_Status RC522_ReadUid(Rc522_Uid *outUid)
     outUid->uid[1] = 0U;
     outUid->uid[2] = 0U;
     outUid->uid[3] = 0U;
+
+    st = RC522_RequestA(atqa);
+    if (st != RC522_STATUS_OK)
+    {
+        return st;
+    }
 
     RC522_ClearBitMask(RC522_REG_COLL, 0x80U);
 
@@ -204,6 +212,9 @@ Rc522_Status RC522_ReadUid(Rc522_Uid *outUid)
     outUid->uid[3] = rxBuf[3];
     outUid->size   = 4U;
     outUid->sak    = 0U;
+
+    // 아마 명시적으로 HALT 상태로 돌리는 것을 안했기 때문에 일종의 초기화처럼 동작?
+    (void)RC522_RequestA(atqa); // dummy task
 
     return RC522_STATUS_OK;
 }
