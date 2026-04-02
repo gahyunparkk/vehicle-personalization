@@ -1,58 +1,86 @@
 #include "MULTICAN_FD.h"
 
-App_MulticanType g_multican;
+multicanType g_multican;
 
 void initMultican(void)
 {
-    IfxMultican_Can_Config canConfig;
-    IfxMultican_Can_NodeConfig nodeConfig;
-    IfxMultican_Can_MsgObjConfig canMsgObjConfig;
+    /* 1. 트랜시버 전원 활성화 (심폐소생술) */
+    IfxPort_setPinModeOutput(&MODULE_P20, 6, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
+    IfxPort_setPinLow(&MODULE_P20, 6);
 
-    /* 1. CAN 모듈 초기화 */
-    IfxMultican_Can_initModuleConfig(&canConfig, &MODULE_CAN);
-    IfxMultican_Can_initModule(&g_multican.can, &canConfig);
+    /* 2. CAN 모듈 초기화 (TC375 스타일로 g_multican 멤버 활용) */
+    IfxMultican_Can_initModuleConfig(&g_multican.canConfig, &MODULE_CAN);
+    IfxMultican_Can_initModule(&g_multican.can, &g_multican.canConfig);
 
-    /* 2. CAN 노드 초기화 */
-    IfxMultican_Can_Node_initConfig(&nodeConfig, &g_multican.can);
+    /* 3. CAN 노드 설정 (500k / 5M FD 설정) */
+    IfxMultican_Can_Node_initConfig(&g_multican.nodeConfig, &g_multican.can);
 
-    nodeConfig.nodeId = IfxMultican_NodeId_0;
-    nodeConfig.baudrate = CAN_BAUDRATE; // 500kbps
+    g_multican.nodeConfig.nodeId = IfxMultican_NodeId_0;
+    g_multican.nodeConfig.rxPin = &IfxMultican_RXD0B_P20_7_IN;
+    g_multican.nodeConfig.txPin = &IfxMultican_TXD0_P20_8_OUT;
+    g_multican.nodeConfig.flexibleDataRate = TRUE;
 
-    /* 핀 할당 */
-    nodeConfig.rxPin = &IfxMultican_RXD0B_P20_7_IN;
-    nodeConfig.rxPinMode = IfxPort_InputMode_pullUp;
-    nodeConfig.txPin = &IfxMultican_TXD0_P20_8_OUT;
-    nodeConfig.txPinMode = IfxPort_OutputMode_pushPull;
-    nodeConfig.pinDriver = IfxPort_PadDriver_cmosAutomotiveSpeed1;
+    g_multican.nodeConfig.fdConfig.nominalBaudrate = 500000;
+    g_multican.nodeConfig.fdConfig.fastBaudrate = 5000000;
+    g_multican.nodeConfig.fdConfig.fastSamplePoint = 7500;
+    g_multican.nodeConfig.fdConfig.loopDelayOffset = 12;
 
-    IfxMultican_Can_Node_init(&g_multican.canNode0, &nodeConfig);
+    IfxMultican_Can_Node_init(&g_multican.canNode0, &g_multican.nodeConfig);
 
-    /* 3. 송신 Message Object 초기화 (여기서 FD 설정을 합니다) */
-    IfxMultican_Can_MsgObj_initConfig(&canMsgObjConfig, &g_multican.canNode0);
+    /* 4. [수신 객체] 초기화 (가현님 성공 로직 기반) */
+    IfxMultican_Can_MsgObj_initConfig(&g_multican.canMsgObjConfig, &g_multican.canNode0);
+    g_multican.canMsgObjConfig.msgObjId = 1;                /* 수신용 1번 */
+    g_multican.canMsgObjConfig.messageId = RX_MESSAGE_ID;
+    g_multican.canMsgObjConfig.frame = IfxMultican_Frame_receive;
+    g_multican.canMsgObjConfig.control.messageLen = IfxMultican_DataLengthCode_8;
+    g_multican.canMsgObjConfig.control.fastBitRate = TRUE;
 
-    canMsgObjConfig.msgObjId = 0;
-    canMsgObjConfig.messageId = TX_MESSAGE_ID; // 0x100
-    canMsgObjConfig.frame = IfxMultican_Frame_transmit;
+    IfxMultican_Can_MsgObj_init(&g_multican.canRxMsgObj, &g_multican.canMsgObjConfig);
 
-    /* [핵심] CAN FD 및 BRS 활성화 설정 */
-    canMsgObjConfig.control.messageLen = IfxMultican_DataLengthCode_8;
-    canMsgObjConfig.control.fastBitRate = TRUE;    // <--- 가현님이 찾으신 BRS 스위치!
-    canMsgObjConfig.control.extendedFrame = FALSE; // Standard ID(11-bit) 사용
+    /* 5. [송신 객체] 초기화 (MCMCAN 스타일 참고) */
+    IfxMultican_Can_MsgObj_initConfig(&g_multican.canMsgObjConfig, &g_multican.canNode0);
+    g_multican.canMsgObjConfig.msgObjId = 0;                /* 송신용 0번 */
+    g_multican.canMsgObjConfig.messageId = TX_MESSAGE_ID;
+    g_multican.canMsgObjConfig.frame = IfxMultican_Frame_transmit;
+    g_multican.canMsgObjConfig.control.fastBitRate = TRUE;
 
-    /* 중복 선언 제거 후 단 한번만 초기화 */
-    IfxMultican_Can_MsgObj_init(&g_multican.canSrcMsgObj, &canMsgObjConfig);
+    IfxMultican_Can_MsgObj_init(&g_multican.canSrcMsgObj, &g_multican.canMsgObjConfig);
+
+    /* ⭐ [핵심] 하드웨어 레지스터 직접 접근하여 FD(FDF) 활성화 ⭐ */
+    /* g_multican.canSrcMsgObj.msgObjId (0번) 우체통의 FD 비트를 강제로 켭니다. */
+    MODULE_CAN.MO[g_multican.canSrcMsgObj.msgObjId].FCR.B.FDF = 1;
+    MODULE_CAN.MO[g_multican.canSrcMsgObj.msgObjId].FCR.B.BRS = 1;
 }
 
-void transmitCanMessage(uint8 *data)
+/* ⭐ TC375 스타일 송신 함수 (ID, Low, High 방식) ⭐ */
+void transmitCanMessage(uint32 txId, uint32 dataLow, uint32 dataHigh)
 {
-    IfxMultican_Message txMsg;
+    /* 구조체 내부의 txMsg 초기화 및 BRS 도장 찍기 */
+    IfxMultican_Message_init(&g_multican.txMsg, txId, dataLow, dataHigh, IfxMultican_DataLengthCode_8);
+    g_multican.txMsg.fastBitRate = TRUE;
 
-    /* 8바이트 데이터 분할 할당 */
-    uint32 low  = (uint32)data[0] | ((uint32)data[1] << 8) | ((uint32)data[2] << 16) | ((uint32)data[3] << 24);
-    uint32 high = (uint32)data[4] | ((uint32)data[5] << 8) | ((uint32)data[6] << 16) | ((uint32)data[7] << 24);
+    /* 전송 시도 */
+    while(IfxMultican_Status_notSentBusy ==
+          IfxMultican_Can_MsgObj_sendMessage(&g_multican.canSrcMsgObj, &g_multican.txMsg));
+}
 
-    IfxMultican_Message_init(&txMsg, TX_MESSAGE_ID, low, high, IfxMultican_DataLengthCode_8);
+/* ⭐ 가현님 성공 수신 로직 (유지) ⭐ */
+boolean receiveCanMessage(uint32 *rxData)
+{
+    /* 구조체 내부의 rxMsg 사용 */
+    IfxMultican_Message_init(&g_multican.rxMsg, 0, 0, 0, IfxMultican_DataLengthCode_8);
 
+    /* NEWDAT 플래그 확인 (폴링 방식) */
+    if (IfxMultican_Can_MsgObj_readMessage(&g_multican.canRxMsgObj, &g_multican.rxMsg) == IfxMultican_Status_newData)
+    {
+        /* 받은 데이터를 구조체 버퍼 및 인자 배열에 복사 */
+        g_multican.rxData[0] = g_multican.rxMsg.data[0];
+        g_multican.rxData[1] = g_multican.rxMsg.data[1];
 
-    while(IfxMultican_Can_MsgObj_sendMessage(&g_multican.canSrcMsgObj, &txMsg) == IfxMultican_Status_notSentBusy);
+        rxData[0] = g_multican.rxData[0];
+        rxData[1] = g_multican.rxData[1];
+        return TRUE;
+    }
+
+    return FALSE;
 }
