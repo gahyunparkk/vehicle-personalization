@@ -1,4 +1,4 @@
-#include "IfxEvadc_Adc.h"
+#include "Evadc/Adc/IfxEvadc_Adc.h"
 
 /* EVADC 핸들 구조체를 전역 변수로 선언합니다. */
 IfxEvadc_Adc evadc;
