@@ -1,3 +1,4 @@
+// MCMCAN_FD.C
 #include "MCMCAN_FD.h"
 
 McmcanType g_mcmcan;
@@ -11,7 +12,7 @@ static const IfxCan_Can_Pins canPins =
 };
 
 /* ⭐ 폴링 방식을 위해 인터럽트 핸들러는 최소화하거나 비워둡니다 ⭐ */
-IFX_INTERRUPT(canIsrTxHandler, 0, ISR_PRIORITY_CAN_TX);
+// IFX_INTERRUPT(canIsrTxHandler, 0, ISR_PRIORITY_CAN_TX);
 void canIsrTxHandler(void)
 {
     IfxCan_Node_clearInterruptFlag(g_mcmcan.canSrcNode.node, IfxCan_Interrupt_transmissionCompleted);
@@ -76,8 +77,7 @@ void initMcmcan(void)
     g_mcmcan.canNodeConfig.messageRAM.rxFifo0StartAddress = 0x200;
 
     /* FD를 위해 주머니 크기를 64바이트로 통일 (8바이트 신호도 64 주머니에 담는 게 가장 안전함) */
-    g_mcmcan.canNodeConfig.messageRAM.txBuffersStartAddress = 0x440;  // 예시 주소
-    g_mcmcan.canNodeConfig.messageRAM.txBuffersStartAddress = 0x400;
+    g_mcmcan.canNodeConfig.messageRAM.txBuffersStartAddress = 0x600;
     g_mcmcan.canNodeConfig.txConfig.txFifoQueueSize = 1;
     g_mcmcan.canNodeConfig.txConfig.dedicatedTxBuffersNumber = 1;
     g_mcmcan.canNodeConfig.txConfig.txBufferDataFieldSize = IfxCan_DataFieldSize_64; // ✅ FD는 반드시 64 지정
@@ -109,16 +109,19 @@ void initMcmcan(void)
 }
 
 /* [송신] 기존 함수 유지 */
-void transmitCanMessage(uint32 txId, uint32 dataLow, uint32 dataHigh)
+void transmitCanMessage(uint32 txId, uint32 *pData)
 {
     IfxCan_Can_initMessage(&g_mcmcan.txMsg);
     g_mcmcan.txMsg.frameMode = IfxCan_FrameMode_fdLongAndFast;
-    g_mcmcan.txMsg.dataLengthCode = IfxCan_DataLengthCode_8;
+    g_mcmcan.txMsg.dataLengthCode = IfxCan_DataLengthCode_64;
     g_mcmcan.txMsg.messageId = txId;
 
-    g_mcmcan.txData[0] = dataLow;
-    g_mcmcan.txData[1] = dataHigh;
-
+    /* 64바이트 상자(txData)에 데이터 복사 */
+    for(int i = 0; i < 16; i++)
+    {
+        /* pData가 가리키는 곳에서 16개를 가져와 꽉 채웁니다 */
+        g_mcmcan.txData[i] = pData[i];
+    }
     while( IfxCan_Status_notSentBusy ==
            IfxCan_Can_sendMessage(&g_mcmcan.canSrcNode, &g_mcmcan.txMsg, &g_mcmcan.txData[0]) );
 }
@@ -126,7 +129,7 @@ void transmitCanMessage(uint32 txId, uint32 dataLow, uint32 dataHigh)
 /* ⭐ [수신] TC275 스타일의 폴링 수신 함수 ⭐ */
 boolean receiveCanMessage(uint32 *rxData)
 {
-    /* Rx FIFO 0에 메시지가 쌓여있는지 레벨 체크 (TC275의 NEWDAT 체크와 동일 역할) */
+    /* Rx FIFO 0에 메시지가 쌓여있는지 레벨 체크 */
     if (IfxCan_Can_getRxFifo0FillLevel(&g_mcmcan.canSrcNode) > 0)
     {
         IfxCan_Message rxMsg;
@@ -136,10 +139,11 @@ boolean receiveCanMessage(uint32 *rxData)
         /* FIFO에서 데이터를 긁어서 rxData 배열에 저장 */
         IfxCan_Can_readMessage(&g_mcmcan.canSrcNode, &rxMsg, rxData);
 
-        /* g_mcmcan 구조체 내부 버퍼에도 동기화 (TC275 스타일) */
-        g_mcmcan.rxData[0] = rxData[0];
-        g_mcmcan.rxData[1] = rxData[1];
-
+        /* g_mcmcan 구조체 내부 버퍼에도 동기화 */
+        for(int i = 0; i < 16; i++)
+        {
+            g_mcmcan.rxData[i] = rxData[i];
+        }
         return TRUE; /* 수신 성공! */
     }
 

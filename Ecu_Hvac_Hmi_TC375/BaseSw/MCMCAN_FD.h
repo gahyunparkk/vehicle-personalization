@@ -19,23 +19,22 @@
 /* 구조체 정의 */
 typedef struct
 {
-    IfxCan_Can_Config canConfig;
-    IfxCan_Can canModule;
-    IfxCan_Can_Node canSrcNode;         /* 메인 통신 노드 */
-    IfxCan_Can_NodeConfig canNodeConfig;
-    IfxCan_Filter canFilter;
-    IfxCan_Message txMsg;
-    IfxCan_Message rxMsg;
-    uint32 txData[MAXIMUM_CAN_DATA_PAYLOAD];
-    uint32 rxData[MAXIMUM_CAN_DATA_PAYLOAD];
+    IfxCan_Can_Config       canConfig;
+    IfxCan_Can              canModule;
+    IfxCan_Can_Node         canSrcNode;         /* 메인 통신 노드 */
+    IfxCan_Can_NodeConfig   canNodeConfig;
+    IfxCan_Filter           canFilter;
+    IfxCan_Message          txMsg;
+    IfxCan_Message          rxMsg;
+    uint32                  txData[MAXIMUM_CAN_DATA_PAYLOAD];
+    uint32                  rxData[MAXIMUM_CAN_DATA_PAYLOAD];
 } McmcanType;
 
 /* 전역 변수 및 함수 선언 */
 extern McmcanType g_mcmcan;
 
 void initMcmcan(void);
-void transmitCanMessage(uint32 txId, uint32 dataLow, uint32 dataHigh);
-void processCanRxMessage(const IfxCan_Message *msg, const uint32 *data);
+void transmitCanMessage(uint32 txId, uint32 *pData);
 boolean receiveCanMessage(uint32 *rxData);
 
 #endif
