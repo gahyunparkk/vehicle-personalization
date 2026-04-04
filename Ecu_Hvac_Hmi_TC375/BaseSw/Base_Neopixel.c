@@ -28,7 +28,7 @@
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
-#include "Ambient.h"
+#include "Base_Neopixel.h"
 #include "IfxPort.h"
 #include <math.h>
 
@@ -64,21 +64,17 @@
 /*********************************************************************************************************************/
 /*-------------------------------------------------Global variables--------------------------------------------------*/
 /*********************************************************************************************************************/
-qspiDma g_qspiDma; /* Global handle for QSPI communication             */
-uint8 spiTxBuffer[SPI_BUFFER_SIZE];
-uint8 spiRxBuffer[SPI_BUFFER_SIZE];
+static qspiDma g_qspiDma; /* Global handle for QSPI communication             */
+static uint8 spiTxBuffer[SPI_BUFFER_SIZE];
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
 static void initQSPI1Master(void);
 static void initQSPI1MasterChannel(void);
-#ifndef _REPLACE_BUFFER_
-static void initQSPI1MasterBuffers(void);
-#endif
 static void initQSPI(void);
-static void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue);
-static void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8 *b);
+void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue);
+void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8 *b);
 
 /*********************************************************************************************************************/
 /*---------------------------------------------Function Implementations----------------------------------------------*/
@@ -157,33 +153,16 @@ static void initQSPI1MasterChannel(void)
   IfxQspi_SpiMaster_initChannel(&g_qspiDma.spiMasterChannel, &spiMasterChannelConfig);
 }
 
-#ifndef _REPLACE_BUFFER_
-/* This function initializes Master SW buffers */
-static void initQSPI1MasterBuffers(void)
-{
-  for (uint32 i = 0; i < SPI_BUFFER_SIZE; i++)
-  {
-    /* Fill the SPI Master TX Buffer  */
-    g_qspiDma.qspiBuffer.spiMasterTxBuffer[i] = (uint8)(i + 1);
-    /* Clear the SPI Master RX Buffer */
-    g_qspiDma.qspiBuffer.spiMasterRxBuffer[i] = 0;
-  }
-}
-#endif
-
 /* This function initializes the QSPI modules */
 static void initQSPI(void)
 {
   /* Secondly initialize the Master */
   initQSPI1Master();
   initQSPI1MasterChannel();
-#ifndef _REPLACE_BUFFER_
-  initQSPI1MasterBuffers();
-#endif
 }
 
 // 특정 LED의 색상을 버퍼에 기록하는 함수
-static void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue)
+void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue)
 {
   if (ledIndex >= NUM_LEDS) return;
 
@@ -219,8 +198,64 @@ static void setNeopixelColor(uint32 ledIndex, uint8 red, uint8 green, uint8 blue
   }
 }
 
+void setNeopixelColorHSV(uint32 ledIndex, uint8 hue, uint8 sat, uint8 val)
+{
+  uint8 r, g, b;
+  convertHSVtoRGB(hue, sat, val, &r, &g, &b);
+  setNeopixelColor(ledIndex, r, g, b);
+}
+
+// LED 색상을 뒤로 한 칸씩 미는 함수 (예: 0번 -> 1번, 1번 -> 2번)
+void shiftLedsForward(uint8 r, uint8 g, uint8 b)
+{
+  // 덮어쓰기를 방지하기 위해 배열의 뒤에서부터 앞으로 복사를 진행합니다.
+  for (int i = NUM_LEDS - 1; i > 0; i--)
+  {
+    uint32 destIndex = i * SPI_BYTES_PER_LED;
+    uint32 srcIndex = (i - 1) * SPI_BYTES_PER_LED;
+
+    for (int j = 0; j < SPI_BYTES_PER_LED; j++)
+    {
+      spiTxBuffer[destIndex + j] = spiTxBuffer[srcIndex + j];
+    }
+  }
+  setNeopixelColor(0, r, g, b);
+}
+
+void shiftLedsForwardHSV(int h, int s, int v)
+{
+  uint8 r, g, b;
+  convertHSVtoRGB((float)h, s * 0.01f, v * 0.01f, &r, &g, &b);
+  shiftLedsForward(r, g, b);
+}
+
+// LED 색상을 앞으로 한 칸씩 당기는 함수 (예: 2번 -> 1번, 1번 -> 0번)
+void shiftLedsBackward(uint8 r, uint8 g, uint8 b)
+{
+  // 앞에서부터 뒤로 복사를 진행합니다.
+  for (int i = 0; i < NUM_LEDS - 1; i++)
+  {
+    uint32 destIndex = i * SPI_BYTES_PER_LED;
+    uint32 srcIndex = (i + 1) * SPI_BYTES_PER_LED;
+
+    for (int j = 0; j < SPI_BYTES_PER_LED; j++)
+    {
+      spiTxBuffer[destIndex + j] = spiTxBuffer[srcIndex + j];
+    }
+  }
+
+  setNeopixelColor(NUM_LEDS - 1, r, g, b);
+}
+
+void shiftLedsBackwardHSV(int h, int s, int v)
+{
+  uint8 r, g, b;
+  convertHSVtoRGB((float)h, s * 0.01f, v * 0.01f, &r, &g, &b);
+  shiftLedsBackward(r, g, b);
+}
+
 // h: 0.0-360.0, s: 0.0-1.0, v: 0.0-1.0
-static void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8 *b)
+void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8 *b)
 {
   float c = v * s;
   float x = c * (1.0f - fabs(fmod(h / 60.0f, 2.0f) - 1.0f));
@@ -245,18 +280,18 @@ static void convertHSVtoRGB(float h, float s, float v, uint8 *r, uint8 *g, uint8
   *b = (unsigned char)((b_prime + m) * 255.0f);
 }
 
-void initAmbient(void)
+void initNeopixel(void)
 {
   initQSPI();
-  setAmbientColor(0, 100, 100);
+  setAllLEDColorHSV(0, 0, 0);
 }
 
-void applyAmbient(void)
+void transmitNeopixel(void)
 {
-  IfxQspi_SpiMaster_exchange(&g_qspiDma.spiMasterChannel, spiTxBuffer, spiRxBuffer, SPI_BUFFER_SIZE);
+  IfxQspi_SpiMaster_exchange(&g_qspiDma.spiMasterChannel, spiTxBuffer, NULL_PTR, SPI_BUFFER_SIZE);
 }
 
-void setAmbientColor(int h, int s, int v)
+void setAllLEDColorHSV(int h, int s, int v)
 {
   uint8 r, g, b;
   convertHSVtoRGB((float)h, s * 0.01f, v * 0.01f, &r, &g, &b);
