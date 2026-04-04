@@ -17,6 +17,7 @@
 
 #include "Shared_Profile.h"
 #include "Shared_System_State.h"
+#include "Shared_Can_Message.h"
 
 /* -------------------------------------------------------------------------------------------------
  * Button mapping
@@ -459,21 +460,89 @@ static void App_HandleButtons1ms(void)
  * ------------------------------------------------------------------------------------------------- */
 static void App_HandleCanRx1ms(void)
 {
-    /* TODO:
-     * CAN 수신 통합 후 구현
-     * 예:
-     * - SS_STATE 수신
-     * - SS_PROFILE_TABLE 수신
-     */
+    uint32 rx_data[MAXIMUM_CAN_DATA_PAYLOAD];
+    uint32 rx_id;
+
+    if (receiveCanMessage(rx_data) == FALSE)
+    {
+        return;
+    }
+
+    rx_id = g_multican.rxMsg.id;
+
+    switch (rx_id)
+    {
+        case SHARED_CAN_MSG_ID_SS_STATE:
+        {
+            Shared_Can_State_t state_msg;
+
+            (void)memset(&state_msg, 0, sizeof(Shared_Can_State_t));
+            (void)memcpy(&state_msg,
+                         (const uint8 *)rx_data,
+                         sizeof(Shared_Can_State_t));
+
+            // 상태 변경
+            g_app.currentState = state_msg.current_state;
+
+            UART_Printf("[RX] SS_STATE current_state=%u\r\n",
+                        state_msg.current_state);
+            break;
+        }
+
+        case SHARED_CAN_MSG_ID_SS_PROFILE_TABLE:
+        {
+            Shared_Profile_Table_t profile_table_msg;
+
+            (void)memset(&profile_table_msg, 0, sizeof(Shared_Profile_Table_t));
+            (void)memcpy(&profile_table_msg,
+                         (const uint8 *)rx_data,
+                         sizeof(Shared_Profile_Table_t));
+
+            // 프로필 테이블 저장
+            memset(&g_app.profileTable,
+                   (const uint8 *)profile_table_msg.profile,
+                   sizeof(Shared_Profile_Table_t));
+
+
+            UART_Printf("[RX] SS_PROFILE_TABLE received\r\n");
+            break;
+        }
+
+        default:
+        {
+            break;
+        }
+    }
 }
 
 static void App_HandleCanTx10ms(void)
 {
-    /* TODO:
-     * CAN 송신 통합 후 구현
-     * 예:
-     * - ACCESS_IDX event 송신
-     * - PROFILE_TABLE 송신
+    uint32 tx_data[MAXIMUM_CAN_DATA_PAYLOAD];
+
+    if ((g_app_manager_rfid_output.event == APP_MANAGER_RFID_EVENT_SUCCESS) &&
+        (g_app_manager_rfid_output.uid_valid == TRUE))
+    {
+        (void)memset(tx_data, 0, sizeof(tx_data));
+
+        ((uint8 *)tx_data)[0] = g_app.rfidOut.uid_idx;
+
+        transmitCanMessage(SHARED_CAN_MSG_ID_AB_ACCESS_IDX, tx_data);
+
+        UART_Printf("[TX] AB_ACCESS_IDX uid_idx=%u\r\n",
+                    g_app.rfidOut.uid_idx);
+    }
+
+    /*
+     * PROFILE_TABLE 송신은 "이 함수 안에 바로 쓸 수 있는 로컬 테이블 원본"이
+     * 현재 스니펫에 없어서 일단 보류
+     *
+     * 나중에 테이블 원본 변수만 정해지면 아래 형태로 바로 추가:
+     *
+     * (void)memset(tx_data, 0, sizeof(tx_data));
+     * (void)memcpy((uint8 *)tx_data,
+     *              &your_profile_table,
+     *              sizeof(Shared_Profile_Table_t));
+     * transmitCanMessage(SHARED_CAN_MSG_ID_AB_PROFILE_TABLE, tx_data);
      */
 }
 
