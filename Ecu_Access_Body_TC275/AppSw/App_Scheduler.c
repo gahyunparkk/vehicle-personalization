@@ -19,6 +19,9 @@
 #include "Shared_System_State.h"
 #include "Shared_Can_Message.h"
 
+#include "MULTICAN_FD.h"
+
+
 /* -------------------------------------------------------------------------------------------------
  * Button mapping
  * D6 / D7   : mirror jog - / +
@@ -499,9 +502,9 @@ static void App_HandleCanRx1ms(void)
                          sizeof(Shared_Profile_Table_t));
 
             // 프로필 테이블 저장
-            memset(&g_app.profileTable,
+            /*memset(&g_app.profileTable,
                    (const uint8 *)profile_table_msg.profile,
-                   sizeof(Shared_Profile_Table_t));
+                   sizeof(Shared_Profile_Table_t));*/
 
 
             UART_Printf("[RX] SS_PROFILE_TABLE received\r\n");
@@ -519,8 +522,8 @@ static void App_HandleCanTx10ms(void)
 {
     uint32 tx_data[MAXIMUM_CAN_DATA_PAYLOAD];
 
-    if ((g_app_manager_rfid_output.event == APP_MANAGER_RFID_EVENT_SUCCESS) &&
-        (g_app_manager_rfid_output.uid_valid == TRUE))
+    if ((g_app.rfidOut.event == APP_MANAGER_RFID_EVENT_SUCCESS) &&
+        (g_app.rfidOut.uid_valid == TRUE))
     {
         (void)memset(tx_data, 0, sizeof(tx_data));
 
@@ -645,6 +648,8 @@ void App_Init(void)
     App_InitSeatAxis();
     App_InitDoor();
 
+    initMultican();
+
     rfidIn.enable_flag   = FALSE;
     rfidIn.register_flag = FALSE;
 
@@ -696,8 +701,8 @@ void AppTask10ms(void)
         }
 
         // ★ TEST ONLY: 추후 수정해야 함
-        //g_app.currentState = (g_app.currentState == SHARED_SYSTEM_STATE_ACTIVATED) ? SHARED_SYSTEM_STATE_SLEEP : SHARED_SYSTEM_STATE_ACTIVATED;
-        g_app.currentState = SHARED_SYSTEM_STATE_SETUP;
+        g_app.currentState = (g_app.currentState == SHARED_SYSTEM_STATE_ACTIVATED) ? SHARED_SYSTEM_STATE_SLEEP : SHARED_SYSTEM_STATE_ACTIVATED;
+        //g_app.currentState = SHARED_SYSTEM_STATE_SETUP;
 
         UART_Printf("[RFID] success idx=%d st=%u\r\n",
                     g_app.activeProfileIdx,

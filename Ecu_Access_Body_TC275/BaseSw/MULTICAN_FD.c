@@ -7,12 +7,6 @@ multicanType g_multican;
 static IfxMultican_Can_MsgObj g_can_rx_state_msg_obj;
 static IfxMultican_Can_MsgObj g_can_rx_profile_table_msg_obj;
 
-/* 핀 설정 */
-static const IfxMultican_Can_NodePointer can_node_pins =
-{
-    .rxPin = &IfxMultican_RXD0B_P20_7_IN,
-    .txPin = &IfxMultican_TXD0_P20_8_OUT
-};
 
 void initMultican(void)
 {
@@ -28,14 +22,14 @@ void initMultican(void)
     IfxMultican_Can_Node_initConfig(&g_multican.nodeConfig, &g_multican.can);
 
     g_multican.nodeConfig.nodeId = IfxMultican_NodeId_0;
-    g_multican.nodeConfig.rxPin = can_node_pins.rxPin;
-    g_multican.nodeConfig.txPin = can_node_pins.txPin;
+    g_multican.nodeConfig.rxPin  = &IfxMultican_RXD0B_P20_7_IN;
+    g_multican.nodeConfig.txPin  = &IfxMultican_TXD0_P20_8_OUT;
     g_multican.nodeConfig.flexibleDataRate = TRUE;
 
-    g_multican.nodeConfig.fdConfig.nominalBaudrate  = SHARED_CAN_NOMINAL_BAUDRATE;
-    g_multican.nodeConfig.fdConfig.fastBaudrate     = 5000000U;
-    g_multican.nodeConfig.fdConfig.fastSamplePoint  = 7500U;
-    g_multican.nodeConfig.fdConfig.loopDelayOffset  = 12U;
+    g_multican.nodeConfig.fdConfig.nominalBaudrate = 500000;
+    g_multican.nodeConfig.fdConfig.fastBaudrate = 5000000;
+    g_multican.nodeConfig.fdConfig.fastSamplePoint = 7500;
+    g_multican.nodeConfig.fdConfig.loopDelayOffset = 12;
 
     IfxMultican_Can_Node_init(&g_multican.canNode0, &g_multican.nodeConfig);
 
