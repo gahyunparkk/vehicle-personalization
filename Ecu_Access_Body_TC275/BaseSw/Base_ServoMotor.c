@@ -2,7 +2,7 @@
 #include "IfxGtm.h"
 
 /* ------------------------------------------------------------------
- * 내부 헬퍼 함수
+ * Internal helpers
  * ------------------------------------------------------------------ */
 static uint16 servoClampPulseTicks(const ServoInstance_t *s, uint16 pulseTicks)
 {
@@ -59,7 +59,7 @@ static void servoApplyPulseRaw(ServoInstance_t *s, uint16 ticks)
 }
 
 /* ------------------------------------------------------------------
- * Initialize
+ * Init
  * ------------------------------------------------------------------ */
 void Servo_Init(ServoInstance_t *s, const ServoConfig_t *cfg)
 {
@@ -68,10 +68,7 @@ void Servo_Init(ServoInstance_t *s, const ServoConfig_t *cfg)
     s->centerPulseTicks = cfg->centerPulseTicks;
     s->maxPulseTicks    = cfg->maxPulseTicks;
 
-    s->move.state           = SERVO_MOVE_IDLE;
-    s->move.targetAngleDeg  = servoClampAngle((sint16)cfg->initAngleDeg);
-    s->move.currentAngleDeg = servoClampAngle((sint16)cfg->initAngleDeg);
-    s->move.stepDeg         = SERVO_DEFAULT_STEP_DEG;
+    s->currentAngleDeg  = servoClampAngle((sint16)cfg->initAngleDeg);
 
     IfxGtm_Tom_Pwm_initConfig(&s->pwmCfg, &MODULE_GTM);
     s->pwmCfg.tom                      = cfg->pwmPin->tom;
@@ -83,7 +80,7 @@ void Servo_Init(ServoInstance_t *s, const ServoConfig_t *cfg)
     s->pwmCfg.synchronousUpdateEnabled = TRUE;
     s->pwmCfg.immediateStartEnabled    = TRUE;
     s->pwmCfg.period                   = s->pwmPeriodTicks;
-    s->pwmCfg.dutyCycle                = servoAngleToPulseTicks(s, s->move.currentAngleDeg);
+    s->pwmCfg.dutyCycle                = servoAngleToPulseTicks(s, s->currentAngleDeg);
     s->pwmCfg.signalLevel              = Ifx_ActiveState_high;
 
     IfxGtm_Tom_Pwm_init(&s->pwmDrv, &s->pwmCfg);
@@ -96,29 +93,28 @@ void Servo_Init(ServoInstance_t *s, const ServoConfig_t *cfg)
 void Servo_SetPulseTicks(ServoInstance_t *s, uint16 pulseTicks)
 {
     pulseTicks = servoClampPulseTicks(s, pulseTicks);
-
-    s->move.currentAngleDeg = servoPulseTicksToAngle(s, pulseTicks);
-    s->move.targetAngleDeg  = s->move.currentAngleDeg;
+    s->currentAngleDeg = servoPulseTicksToAngle(s, pulseTicks);
 
     servoApplyPulseRaw(s, pulseTicks);
 }
 
 void Servo_SetAngle(ServoInstance_t *s, sint16 angleDeg)
 {
+    uint16 pulseTicks;
+
     angleDeg = servoClampAngle(angleDeg);
+    s->currentAngleDeg = angleDeg;
 
-    s->move.targetAngleDeg  = angleDeg;
-    s->move.currentAngleDeg = angleDeg;
-
-    servoApplyAngleNow(s, angleDeg);
+    pulseTicks = servoAngleToPulseTicks(s, angleDeg);
+    servoApplyPulseRaw(s, pulseTicks);
 }
 
 uint16 Servo_GetPulseTicks(ServoInstance_t *s)
 {
-    return servoAngleToPulseTicks(s, s->move.currentAngleDeg);
+    return servoAngleToPulseTicks(s, s->currentAngleDeg);
 }
 
 sint16 Servo_GetAngle(ServoInstance_t *s)
 {
-    return s->move.currentAngleDeg;
+    return s->currentAngleDeg;
 }

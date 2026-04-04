@@ -28,9 +28,6 @@
  * pulse : 0.5 ms ->  195 ticks
  * 1.5 ms ->  586 ticks
  * 2.5 ms ->  977 ticks
- *
- * Note:
- * These are TOM tick values, not microseconds.
  * ------------------------------------------------------------------ */
 #define SERVO_PWM_PERIOD_TICKS      7813U
 #define SERVO_PULSE_MIN_TICKS        195U
@@ -43,6 +40,7 @@
 
 #define SERVO_ANGLE_SPAN            (SERVO_ANGLE_MAX - SERVO_ANGLE_MIN)
 
+/* 상태 머신 및 스텝 구조체 모두 제거, 현재 각도만 기억하도록 간소화 */
 typedef struct
 {
     IfxGtm_Tom_Pwm_Config pwmCfg;
@@ -53,7 +51,7 @@ typedef struct
     uint16 centerPulseTicks;
     uint16 maxPulseTicks;
 
-    ServoMoveCtrl_t move;
+    sint16 currentAngleDeg;
 } ServoInstance_t;
 
 typedef struct
