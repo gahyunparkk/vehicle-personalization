@@ -13,16 +13,18 @@
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
 /* ---------------- Pin mapping ----------------
- * QSPI1 SCLK : P10.2
- * QSPI1 MRST : P10.1
- * QSPI1 MTSR : P10.3
- * RC522 CS   : P10.5 (manual GPIO)
- * RC522 RST  : P02.7 (manual GPIO)
+ * QSPI1 SCLK : P11.6  (D47)
+ * QSPI1 MTSR : P11.9  (D41)
+ * QSPI1 MRST : P11.3  (D46)
+ * RC522 CS   : P11.10 (D42)
  * -------------------------------------------- */
 
-#define BASE_COM_QSPI1_MODULE                (&MODULE_QSPI1)
-
+#define BASE_COM_QSPI1_MODULE                     (&MODULE_QSPI1)
 #define BASE_COM_QSPI1_MASTER_CHANNEL_BAUDRATE    (100000U)
+#define BASE_COM_QSPI1_SCLK                       (&IfxQspi1_SCLK_P11_6_OUT)
+#define BASE_COM_QSPI1_CS                         (&IfxQspi1_SLSO3_P11_10_OUT)
+#define BASE_COM_QSPI1_MTSR                       (&IfxQspi1_MTSR_P11_9_OUT)
+#define BASE_COM_QSPI1_MRST                       (&IfxQspi1_MRSTB_P11_3_IN)
 
 /* Interrupt Service Routine priorities for Master SPI communication */
 #define BASE_COM_QSPI1_ISR_PRIORITY_MASTER_TX     (10U)
@@ -76,11 +78,11 @@ void Base_Com_Qspi1_Master_Init(void)
     /* Select the port pins for communication */
     const IfxQspi_SpiMaster_Pins baseComQspi1MasterPins =
     {
-        &IfxQspi1_SCLK_P10_2_OUT,
+        BASE_COM_QSPI1_SCLK,
         IfxPort_OutputMode_pushPull,
-        &IfxQspi1_MTSR_P10_3_OUT,
+        BASE_COM_QSPI1_MTSR,
         IfxPort_OutputMode_pushPull,
-        &IfxQspi1_MRSTA_P10_1_IN,
+        BASE_COM_QSPI1_MRST,
         IfxPort_InputMode_pullDown,
         IfxPort_PadDriver_cmosAutomotiveSpeed1
     };
@@ -117,7 +119,7 @@ void Base_Com_Qspi1_Master_Channel_Init(void)
     /* Select the port pin for the Chip Select signal */
     const IfxQspi_SpiMaster_Output baseComQspi1SlaveSelect =
     {
-        &IfxQspi1_SLSO9_P10_5_OUT,
+        BASE_COM_QSPI1_CS,
         IfxPort_OutputMode_pushPull,
         IfxPort_PadDriver_cmosAutomotiveSpeed1
     };

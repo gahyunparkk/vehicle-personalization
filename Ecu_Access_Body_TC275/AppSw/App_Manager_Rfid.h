@@ -25,11 +25,12 @@ typedef struct
 {
     App_Manager_Rfid_Event_t event;
     boolean                  uid_valid;
+    sint8                    uid_idx;
     Mfrc522_Uid              uid;
 } App_Manager_Rfid_Output_t;
 
 void App_Manager_Rfid_Init(uint32 now_ms);
-App_Manager_Rfid_Output_t App_Manager_Rfid_Run(uint32 now_ms,
-                                               const App_Manager_Rfid_Input_t *input);
-
+void App_Manager_Rfid_Run(uint32 now_ms,
+                          const App_Manager_Rfid_Input_t *input,
+                          App_Manager_Rfid_Output_t *out);
 #endif
