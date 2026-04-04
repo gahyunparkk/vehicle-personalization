@@ -1,79 +1,42 @@
 #ifndef APP_MANAGER_SYSTEM_H_
 #define APP_MANAGER_SYSTEM_H_
 
-/*********************************************************************************************************************/
-/*-----------------------------------------------------Includes------------------------------------------------------*/
-/*********************************************************************************************************************/
 #include "Platform_Types.h"
+#include "Shared_Profile.h"
+#include "Shared_System_State.h"
 
-/*********************************************************************************************************************/
-/*------------------------------------------------Type Definitions--------------------------------------------------*/
-/*********************************************************************************************************************/
-typedef enum
-{
-    APP_MANAGER_SYSTEM_STATE_SLEEP = 0,
-    APP_MANAGER_SYSTEM_STATE_SETUP,
-    APP_MANAGER_SYSTEM_STATE_ACTIVATED,
-    APP_MANAGER_SYSTEM_STATE_DENIED,
-    APP_MANAGER_SYSTEM_STATE_EMERGENCY
-} App_Manager_System_State_t;
+#define APP_MANAGER_SYSTEM_SETUP_HOLD_MS                  (100U)
+#define APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS              (10000U)
 
-typedef enum
-{
-    APP_MANAGER_SYSTEM_REASON_NONE = 0,
-    APP_MANAGER_SYSTEM_REASON_VALID_RFID,
-    APP_MANAGER_SYSTEM_REASON_INVALID_RFID_3TIMES,
-    APP_MANAGER_SYSTEM_REASON_PROFILE_LOAD_DONE,
-    APP_MANAGER_SYSTEM_REASON_SETUP_TIMEOUT,
-    APP_MANAGER_SYSTEM_REASON_DEACTIVATE_REQUEST,
-    APP_MANAGER_SYSTEM_REASON_HAZARD_DETECTED,
-    APP_MANAGER_SYSTEM_REASON_DENIED_TIMEOUT,
-    APP_MANAGER_SYSTEM_REASON_EMERGENCY_CLEAR
-} App_Manager_System_Reason_t;
-
-/*
- * input은 각 ECU에서 수신한 CAN 정보를 상위 FSM이 해석하기 쉬운 형태로 정리한 값이다.
- * event성 입력은 1주기 펄스처럼 넣는 것을 가정한다.
- */
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_HIGH_X10        (500)
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_HIGH_X10  (400)
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_LOW_X10         (-200)
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_LOW_X10   (-100)
 
 typedef struct
 {
-    boolean rfid_auth_success;
-    boolean rfid_fail_3times;
-
-    boolean profile_load_done;
-
-    boolean deactivate_request;
-
-    boolean hazard_detected;
-    boolean emergency_clear;
+    boolean                auth_event_valid;
+    uint8                  active_profile_index;
+    Shared_Profile_Table_t profile_table;
 } App_Manager_System_Input_t;
 
 typedef struct
 {
-    App_Manager_System_State_t  current_state;
-    App_Manager_System_Reason_t transition_reason;
+    uint8                  current_state;
+    sint8                  temperature;
+    uint8                  active_profile_index;
+    Shared_Profile_Table_t profile_table;
 
-    boolean state_changed;
-    boolean tx_state_broadcast;
-
-    boolean cmd_door_unlock;
-    boolean cmd_profile_load;
-    boolean cmd_apply_profile;
-    boolean cmd_emergency_profile;
-    boolean cmd_alert;
 } App_Manager_System_Output_t;
 
-/*********************************************************************************************************************/
-/*------------------------------------------------Function Prototypes------------------------------------------------*/
-/*********************************************************************************************************************/
 void App_Manager_System_Init(void);
 
 void App_Manager_System_Run(uint32 now_ms,
+                            sint16 local_temperature_x10,
                             const App_Manager_System_Input_t *input,
                             App_Manager_System_Output_t *output);
 
-App_Manager_System_State_t App_Manager_System_GetState(void);
-App_Manager_System_Reason_t App_Manager_System_GetReason(void);
+Shared_System_State_t App_Manager_System_GetState(void);
+uint8 App_Manager_System_GetActiveProfileIndex(void);
 
 #endif /* APP_MANAGER_SYSTEM_H_ */

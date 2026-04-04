@@ -1,123 +1,101 @@
-/*********************************************************************************************************************/
-/*-----------------------------------------------------Includes------------------------------------------------------*/
-/*********************************************************************************************************************/
 #include "App_Manager_System.h"
+#include "Platform_Types.h"
 
-/*********************************************************************************************************************/
-/*------------------------------------------------------Macros-------------------------------------------------------*/
-/*********************************************************************************************************************/
-#define APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS      (10000U)
-#define APP_MANAGER_SYSTEM_SETUP_TIMEOUT_MS       (3000U)
-
-/*********************************************************************************************************************/
-/*-------------------------------------------------Data Structures---------------------------------------------------*/
-/*********************************************************************************************************************/
 typedef struct
 {
-    App_Manager_System_State_t  current_state;
-    App_Manager_System_Reason_t last_reason;
-    uint32                      state_enter_time_ms;
+    Shared_System_State_t  current_state;
+    uint32                 state_enter_time_ms;
+    uint8                  active_profile_index;
+    sint16                 last_temperature_x10;
+    Shared_Profile_Table_t profile_table;
 } App_Manager_System_Context_t;
 
-/*********************************************************************************************************************/
-/*--------------------------------------------Private Variables/Constants--------------------------------------------*/
-/*********************************************************************************************************************/
 static App_Manager_System_Context_t g_app_manager_system_context;
 
-/*********************************************************************************************************************/
-/*------------------------------------------------Function Prototypes------------------------------------------------*/
-/*********************************************************************************************************************/
 static void App_Manager_System_ResetOutput(App_Manager_System_Output_t *output);
-static void App_Manager_System_SetState(App_Manager_System_State_t next_state,
-                                        App_Manager_System_Reason_t reason,
-                                        uint32 now_ms);
+static void App_Manager_System_SetState(Shared_System_State_t next_state, uint32 now_ms);
+static boolean App_Manager_System_IsNormalProfileIndex(uint8 profile_index);
+static boolean App_Manager_System_IsEmergencyRequired(sint16 temperature_x10);
+static boolean App_Manager_System_IsEmergencyClear(sint16 temperature_x10);
+static void App_Manager_System_CopyProfileTable(Shared_Profile_Table_t *dst,
+                                                const Shared_Profile_Table_t *src);
 static uint32 App_Manager_System_GetElapsed(uint32 now_ms, uint32 base_ms);
+static sint8 App_Manager_System_ConvertTemperatureToTxValue(sint16 temperature_x10);
 
-/*********************************************************************************************************************/
-/*---------------------------------------------Function Implementations----------------------------------------------*/
-/*********************************************************************************************************************/
 void App_Manager_System_Init(void)
 {
-    g_app_manager_system_context.current_state       = APP_MANAGER_SYSTEM_STATE_SLEEP;
-    g_app_manager_system_context.last_reason         = APP_MANAGER_SYSTEM_REASON_NONE;
-    g_app_manager_system_context.state_enter_time_ms = 0U;
-}
+    uint8 index;
 
-App_Manager_System_State_t App_Manager_System_GetState(void)
-{
-    return g_app_manager_system_context.current_state;
-}
+    g_app_manager_system_context.current_state        = SHARED_SYSTEM_STATE_SLEEP;
+    g_app_manager_system_context.state_enter_time_ms  = 0U;
+    g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
+    g_app_manager_system_context.last_temperature_x10 = 0;
 
-App_Manager_System_Reason_t App_Manager_System_GetReason(void)
-{
-    return g_app_manager_system_context.last_reason;
+    for (index = 0U; index < SHARED_PROFILE_TOTAL_COUNT; index++)
+    {
+        g_app_manager_system_context.profile_table.profile[index].profile_id          = 0U;
+        g_app_manager_system_context.profile_table.profile[index].side_motor_angle    = 0U;
+        g_app_manager_system_context.profile_table.profile[index].seat_motor_angle    = 0U;
+        g_app_manager_system_context.profile_table.profile[index].ambient_light       = 0U;
+        g_app_manager_system_context.profile_table.profile[index].ac_on_threshold     = 0U;
+        g_app_manager_system_context.profile_table.profile[index].heater_on_threshold = 0U;
+    }
 }
 
 void App_Manager_System_Run(uint32 now_ms,
+                            sint16 local_temperature_x10,
                             const App_Manager_System_Input_t *input,
                             App_Manager_System_Output_t *output)
 {
-    App_Manager_System_State_t prev_state;
-
     if ((input == NULL_PTR) || (output == NULL_PTR))
     {
         return;
     }
 
-    prev_state = g_app_manager_system_context.current_state;
+    App_Manager_System_CopyProfileTable(&g_app_manager_system_context.profile_table,
+                                        &input->profile_table);
 
-    App_Manager_System_ResetOutput(output);
+    g_app_manager_system_context.last_temperature_x10 = local_temperature_x10;
 
     switch (g_app_manager_system_context.current_state)
     {
-    case APP_MANAGER_SYSTEM_STATE_SLEEP:
-        if (input->hazard_detected == TRUE)
-        {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_EMERGENCY,
-                                        APP_MANAGER_SYSTEM_REASON_HAZARD_DETECTED,
-                                        now_ms);
-        }
-        else if (input->rfid_fail_3times == TRUE)
-        {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_DENIED,
-                                        APP_MANAGER_SYSTEM_REASON_INVALID_RFID_3TIMES,
-                                        now_ms);
-        }
-        else if (input->rfid_auth_success == TRUE)
-        {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SETUP,
-                                        APP_MANAGER_SYSTEM_REASON_VALID_RFID,
-                                        now_ms);
-        }
-        else
-        {
-            /* keep state */
-        }
-        break;
+        case SHARED_SYSTEM_STATE_SLEEP:
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
 
-    case APP_MANAGER_SYSTEM_STATE_SETUP:
-        output->cmd_door_unlock  = TRUE;
-        output->cmd_profile_load = TRUE;
+            if (input->auth_event_valid == TRUE)
+            {
+                if (input->active_profile_index == SHARED_PROFILE_INDEX_INVALID)
+                {
+                    g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
+                    App_Manager_System_SetState(SHARED_SYSTEM_STATE_DENIED, now_ms);
+                }
+                else if (App_Manager_System_IsNormalProfileIndex(input->active_profile_index) == TRUE)
+                {
+                    g_app_manager_system_context.active_profile_index = input->active_profile_index;
+                    App_Manager_System_SetState(SHARED_SYSTEM_STATE_SETUP, now_ms);
+                }
+                else
+                {
+                    /* ignore invalid value */
+                }
+            }
+            else
+            {
+                /* keep state */
+            }
+            break;
 
-        if (input->hazard_detected == TRUE)
+    case SHARED_SYSTEM_STATE_SETUP:
+        if (App_Manager_System_IsEmergencyRequired(local_temperature_x10) == TRUE)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_EMERGENCY,
-                                        APP_MANAGER_SYSTEM_REASON_HAZARD_DETECTED,
-                                        now_ms);
-        }
-        else if (input->profile_load_done == TRUE)
-        {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_ACTIVATED,
-                                        APP_MANAGER_SYSTEM_REASON_PROFILE_LOAD_DONE,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_EMERGENCY, now_ms);
         }
         else if (App_Manager_System_GetElapsed(now_ms,
                                                g_app_manager_system_context.state_enter_time_ms) >=
-                 APP_MANAGER_SYSTEM_SETUP_TIMEOUT_MS)
+                 APP_MANAGER_SYSTEM_SETUP_HOLD_MS)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SLEEP,
-                                        APP_MANAGER_SYSTEM_REASON_SETUP_TIMEOUT,
-                                        now_ms);
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_ACTIVATED, now_ms);
         }
         else
         {
@@ -125,20 +103,18 @@ void App_Manager_System_Run(uint32 now_ms,
         }
         break;
 
-    case APP_MANAGER_SYSTEM_STATE_ACTIVATED:
-        output->cmd_apply_profile = TRUE;
-
-        if (input->hazard_detected == TRUE)
+    case SHARED_SYSTEM_STATE_ACTIVATED:
+        if (App_Manager_System_IsEmergencyRequired(local_temperature_x10) == TRUE)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_EMERGENCY,
-                                        APP_MANAGER_SYSTEM_REASON_HAZARD_DETECTED,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_EMERGENCY, now_ms);
         }
-        else if (input->deactivate_request == TRUE)
+        else if ((input->auth_event_valid == TRUE) &&
+                 (App_Manager_System_IsNormalProfileIndex(input->active_profile_index) == TRUE) &&
+                 (input->active_profile_index != g_app_manager_system_context.active_profile_index))
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SLEEP,
-                                        APP_MANAGER_SYSTEM_REASON_DEACTIVATE_REQUEST,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = input->active_profile_index;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_SETUP, now_ms);
         }
         else
         {
@@ -146,22 +122,20 @@ void App_Manager_System_Run(uint32 now_ms,
         }
         break;
 
-    case APP_MANAGER_SYSTEM_STATE_DENIED:
-        output->cmd_alert = TRUE;
+    case SHARED_SYSTEM_STATE_DENIED:
+        g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
 
-        if (input->hazard_detected == TRUE)
+        if (App_Manager_System_IsEmergencyRequired(local_temperature_x10) == TRUE)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_EMERGENCY,
-                                        APP_MANAGER_SYSTEM_REASON_HAZARD_DETECTED,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_EMERGENCY, now_ms);
         }
         else if (App_Manager_System_GetElapsed(now_ms,
                                                g_app_manager_system_context.state_enter_time_ms) >=
                  APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SLEEP,
-                                        APP_MANAGER_SYSTEM_REASON_DENIED_TIMEOUT,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_SLEEP, now_ms);
         }
         else
         {
@@ -169,16 +143,13 @@ void App_Manager_System_Run(uint32 now_ms,
         }
         break;
 
-    case APP_MANAGER_SYSTEM_STATE_EMERGENCY:
-        output->cmd_emergency_profile = TRUE;
-        output->cmd_door_unlock       = TRUE;
-        output->cmd_alert             = TRUE;
+    case SHARED_SYSTEM_STATE_EMERGENCY:
+        g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
 
-        if (input->emergency_clear == TRUE)
+        if (App_Manager_System_IsEmergencyClear(local_temperature_x10) == TRUE)
         {
-            App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SLEEP,
-                                        APP_MANAGER_SYSTEM_REASON_EMERGENCY_CLEAR,
-                                        now_ms);
+            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
+            App_Manager_System_SetState(SHARED_SYSTEM_STATE_SLEEP, now_ms);
         }
         else
         {
@@ -187,48 +158,113 @@ void App_Manager_System_Run(uint32 now_ms,
         break;
 
     default:
-        App_Manager_System_SetState(APP_MANAGER_SYSTEM_STATE_SLEEP,
-                                    APP_MANAGER_SYSTEM_REASON_NONE,
-                                    now_ms);
+        g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
+        App_Manager_System_SetState(SHARED_SYSTEM_STATE_SLEEP, now_ms);
         break;
     }
 
-    output->current_state      = g_app_manager_system_context.current_state;
-    output->transition_reason  = g_app_manager_system_context.last_reason;
-
-    if (prev_state != g_app_manager_system_context.current_state)
-    {
-        output->state_changed      = TRUE;
-        output->tx_state_broadcast = TRUE;
-    }
+    App_Manager_System_ResetOutput(output);
 }
 
-static void App_Manager_System_ResetOutput(App_Manager_System_Output_t *output)
+Shared_System_State_t App_Manager_System_GetState(void)
 {
-    output->current_state          = g_app_manager_system_context.current_state;
-    output->transition_reason      = g_app_manager_system_context.last_reason;
-    output->state_changed          = FALSE;
-    output->tx_state_broadcast     = FALSE;
-    output->cmd_door_unlock        = FALSE;
-    output->cmd_profile_load       = FALSE;
-    output->cmd_apply_profile      = FALSE;
-    output->cmd_emergency_profile  = FALSE;
-    output->cmd_alert              = FALSE;
+    return g_app_manager_system_context.current_state;
 }
 
-static void App_Manager_System_SetState(App_Manager_System_State_t next_state,
-                                        App_Manager_System_Reason_t reason,
-                                        uint32 now_ms)
+uint8 App_Manager_System_GetActiveProfileIndex(void)
+{
+    return g_app_manager_system_context.active_profile_index;
+}
+
+static void App_Manager_System_SetState(Shared_System_State_t next_state, uint32 now_ms)
 {
     if (g_app_manager_system_context.current_state != next_state)
     {
         g_app_manager_system_context.current_state       = next_state;
-        g_app_manager_system_context.last_reason         = reason;
         g_app_manager_system_context.state_enter_time_ms = now_ms;
+    }
+}
+
+static boolean App_Manager_System_IsNormalProfileIndex(uint8 profile_index)
+{
+    return (profile_index < SHARED_PROFILE_NORMAL_COUNT) ? TRUE : FALSE;
+}
+
+static boolean App_Manager_System_IsEmergencyRequired(sint16 temperature_x10)
+{
+    if (temperature_x10 >= APP_MANAGER_SYSTEM_TEMP_EMERGENCY_HIGH_X10)
+    {
+        return TRUE;
+    }
+
+    if (temperature_x10 <= APP_MANAGER_SYSTEM_TEMP_EMERGENCY_LOW_X10)
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+static boolean App_Manager_System_IsEmergencyClear(sint16 temperature_x10)
+{
+    if ((temperature_x10 < APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_HIGH_X10) &&
+        (temperature_x10 > APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_LOW_X10))
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+static void App_Manager_System_CopyProfileTable(Shared_Profile_Table_t *dst,
+                                                const Shared_Profile_Table_t *src)
+{
+    uint8 index;
+
+    if ((dst == NULL_PTR) || (src == NULL_PTR))
+    {
+        return;
+    }
+
+    for (index = 0U; index < SHARED_PROFILE_TOTAL_COUNT; index++)
+    {
+        dst->profile[index] = src->profile[index];
     }
 }
 
 static uint32 App_Manager_System_GetElapsed(uint32 now_ms, uint32 base_ms)
 {
     return (now_ms - base_ms);
+}
+
+static sint8 App_Manager_System_ConvertTemperatureToTxValue(sint16 temperature_x10)
+{
+    sint16 temp_c;
+
+    temp_c = temperature_x10 / 10;
+
+    if (temp_c > 127)
+    {
+        temp_c = 127;
+    }
+    else if (temp_c < -128)
+    {
+        temp_c = -128;
+    }
+    else
+    {
+        /* do nothing */
+    }
+
+    return (sint8)temp_c;
+}
+
+static void App_Manager_System_ResetOutput(App_Manager_System_Output_t *output)
+{
+    output->profile_table        = g_app_manager_system_context.profile_table;
+    output->current_state        = (uint8)g_app_manager_system_context.current_state;
+    output->active_profile_index = g_app_manager_system_context.active_profile_index;
+    output->temperature          =
+        App_Manager_System_ConvertTemperatureToTxValue(
+            g_app_manager_system_context.last_temperature_x10);
 }
