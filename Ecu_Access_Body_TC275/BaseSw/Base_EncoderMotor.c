@@ -106,8 +106,10 @@ static void Motor_StartDrive(MotorInstance_t *m,
     if (useBoost)
     {
         if (initDuty < MOTOR_START_BOOST_DUTY)
+        {
             initDuty = MOTOR_START_BOOST_DUTY;
-        m->move.boostUntilStm = now + ...;
+        }
+        m->move.boostUntilStm = now + IfxStm_getTicksFromMilliseconds(BSP_DEFAULT_TIMER, MOTOR_START_BOOST_MS);
     }
     else
     {
@@ -430,7 +432,7 @@ void Motor_ClearState(MotorInstance_t *m)
     m->move.startTicks         = 0;
     m->move.targetTicks        = 0;
     m->move.finalTargetTicks   = 0;
-    m->move.originStartTicks = 0;
+    m->move.originStartTicks   = 0;
     m->move.requestedDuty      = 0U;
     m->move.appliedDuty        = 0U;
     m->move.timeoutTicks       = 0U;
