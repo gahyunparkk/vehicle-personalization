@@ -6,6 +6,7 @@
 #include "Shared_System_State.h"
 
 #define APP_MANAGER_SYSTEM_SETUP_HOLD_MS                  (100U)
+#define APP_MANAGER_SYSTEM_SHUTDOWN_HOLD_MS               (100U)
 #define APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS              (10000U)
 
 #define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_HIGH_X10        (500)
@@ -16,6 +17,7 @@
 typedef struct
 {
     boolean                auth_event_valid;
+    boolean                shutdown_request;
     uint8                  active_profile_index;
     Shared_Profile_Table_t profile_table;
 } App_Manager_System_Input_t;
@@ -26,7 +28,6 @@ typedef struct
     sint8                  temperature;
     uint8                  active_profile_index;
     Shared_Profile_Table_t profile_table;
-
 } App_Manager_System_Output_t;
 
 void App_Manager_System_Init(void);
