@@ -11,7 +11,8 @@
 #define ISR_PRIORITY_CAN_RX         1
 #define RX_INTERRUPT_SRC_ID         IfxMultican_SrcId_0
 #define TX_MESSAGE_ID               0x100   /* 기본 송신 ID */
-#define RX_MESSAGE_ID               0x150   /* 375로부터 받을 ID */
+#define RX_MESSAGE_ID               0x150   /* 기본 수신 ID */
+#define MAXIMUM_CAN_DATA_PAYLOAD    16
 
 /* 통합 구조체 정의 */
 typedef struct
@@ -25,15 +26,15 @@ typedef struct
     IfxMultican_Can_MsgObjConfig canMsgObjConfig;   /* 객체 설정 */
     IfxMultican_Message         txMsg;              /* 송신 메시지 구조체 */
     IfxMultican_Message         rxMsg;              /* 수신 메시지 구조체 */
-    uint32                      txData[2];          /* 송신 데이터 버퍼 */
-    uint32                      rxData[2];          /* 수신 데이터 버퍼 */
+    uint32                      txData[MAXIMUM_CAN_DATA_PAYLOAD];          /* 송신 데이터 버퍼 */
+    uint32                      rxData[MAXIMUM_CAN_DATA_PAYLOAD];          /* 수신 데이터 버퍼 */
 } multicanType;
 
 extern multicanType g_multican;
 
 /* 함수 프로토타입 */
 void initMultican(void);
-void transmitCanMessage(uint32 txId, uint32 dataLow, uint32 dataHigh);
+void transmitCanMessage(uint32 txId, uint32 *pData);
 boolean receiveCanMessage(uint32 *rxData);
 
 #endif
