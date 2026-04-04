@@ -1,5 +1,5 @@
 /**********************************************************************************************************************
- * \file SPI_DMA.h
+ * \file Driver_Stm.h
  * \copyright Copyright (C) Infineon Technologies AG 2019
  *
  * Use of this file is subject to the terms of use agreed between (i) you or the company in which ordinary course of
@@ -25,51 +25,42 @@
  * IN THE SOFTWARE.
  *********************************************************************************************************************/
 
-#ifndef SPI_DMA_H_
-#define SPI_DMA_H_
+#ifndef DRIVER_STM_H_
+#define DRIVER_STM_H_
 
 /*********************************************************************************************************************/
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
-#include "IfxQspi_SpiMaster.h"
-#include "Ifx_Types.h"
 
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
+typedef unsigned char uint8_t;
 /*********************************************************************************************************************/
-#define NUM_LEDS          20
-#define SPI_BYTES_PER_LED 9
-#define RESET_BYTES       60
-#define SPI_BUFFER_SIZE   (NUM_LEDS * SPI_BYTES_PER_LED) + RESET_BYTES /* SPI Buffer size */
+
+/*********************************************************************************************************************/
+/*-------------------------------------------------Global variables--------------------------------------------------*/
+/*********************************************************************************************************************/
 
 /*********************************************************************************************************************/
 /*-------------------------------------------------Data Structures---------------------------------------------------*/
-/*********************************************************************************************************************/
-#define _REPLACE_BUFFER_
-#ifndef _REPLACE_BUFFER_
 typedef struct
 {
-  uint8 spiMasterTxBuffer[SPI_BUFFER_SIZE]; /* QSPI Master Transmit buffer  */
-  uint8 spiMasterRxBuffer[SPI_BUFFER_SIZE]; /* QSPI Master Receive buffer   */
-  uint8 spiSlaveTxBuffer[SPI_BUFFER_SIZE];  /* QSPI Slave Transmit buffer   */
-  uint8 spiSlaveRxBuffer[SPI_BUFFER_SIZE];  /* QSPI Slave Receive buffer    */
-} qspiBuffers;
-#endif
+  uint8_t u8nuScheduling1msFlag;
+  uint8_t u8nuScheduling10msFlag;
+  uint8_t u8nuScheduling100msFlag;
+  uint8_t u8nuScheduling1000msFlag;
+} SchedulingFlag;
+extern SchedulingFlag stSchedulingInfo;
 
-typedef struct
-{
-#ifndef _REPLACE_BUFFER_
-  qspiBuffers qspiBuffer; /* Buffers instance             */
-#endif
-  IfxQspi_SpiMaster spiMaster;                /* QSPI Master handle           */
-  IfxQspi_SpiMaster_Channel spiMasterChannel; /* QSPI Master Channel handle   */
-} qspiDma;
+/*********************************************************************************************************************/
+
+/*********************************************************************************************************************/
+/*--------------------------------------------Private Variables/Constants--------------------------------------------*/
+/*********************************************************************************************************************/
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
+extern void Driver_Stm_Init(void);
 /*********************************************************************************************************************/
-void initAmbient(void);                    // 초기 설정
-void applyAmbient(void);                   // 현재 설정된 색 전송
-void setAmbientColor(int h, int s, int v); // hue(색조): 0-360, saturation(채도): 0-100, value(밝기): 0-100
 
-#endif /* SPI_DMA_H_ */
+#endif /* DRIVER_STM_H_ */
