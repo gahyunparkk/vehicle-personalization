@@ -25,6 +25,7 @@ typedef struct
 {
     App_Manager_Rfid_Event_t event;
     boolean                  uid_valid;
+    sint8                    uid_idx;
     Mfrc522_Uid              uid;
 } App_Manager_Rfid_Output_t;
 
