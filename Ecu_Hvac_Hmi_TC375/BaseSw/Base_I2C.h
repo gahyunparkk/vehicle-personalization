@@ -1,5 +1,5 @@
 /**********************************************************************************************************************
- * \file SPI_DMA.h
+ * \file I2C_Read_Ext_Device.h
  * \copyright Copyright (C) Infineon Technologies AG 2019
  *
  * Use of this file is subject to the terms of use agreed between (i) you or the company in which ordinary course of
@@ -25,51 +25,16 @@
  * IN THE SOFTWARE.
  *********************************************************************************************************************/
 
-#ifndef SPI_DMA_H_
-#define SPI_DMA_H_
+#ifndef I2C_READ_EXT_DEVICE_H_
+#define I2C_READ_EXT_DEVICE_H_
 
-/*********************************************************************************************************************/
-/*-----------------------------------------------------Includes------------------------------------------------------*/
-/*********************************************************************************************************************/
-#include "IfxQspi_SpiMaster.h"
 #include "Ifx_Types.h"
-
-/*********************************************************************************************************************/
-/*------------------------------------------------------Macros-------------------------------------------------------*/
-/*********************************************************************************************************************/
-#define NUM_LEDS          20
-#define SPI_BYTES_PER_LED 9
-#define RESET_BYTES       60
-#define SPI_BUFFER_SIZE   (NUM_LEDS * SPI_BYTES_PER_LED) + RESET_BYTES /* SPI Buffer size */
-
-/*********************************************************************************************************************/
-/*-------------------------------------------------Data Structures---------------------------------------------------*/
-/*********************************************************************************************************************/
-#define _REPLACE_BUFFER_
-#ifndef _REPLACE_BUFFER_
-typedef struct
-{
-  uint8 spiMasterTxBuffer[SPI_BUFFER_SIZE]; /* QSPI Master Transmit buffer  */
-  uint8 spiMasterRxBuffer[SPI_BUFFER_SIZE]; /* QSPI Master Receive buffer   */
-  uint8 spiSlaveTxBuffer[SPI_BUFFER_SIZE];  /* QSPI Slave Transmit buffer   */
-  uint8 spiSlaveRxBuffer[SPI_BUFFER_SIZE];  /* QSPI Slave Receive buffer    */
-} qspiBuffers;
-#endif
-
-typedef struct
-{
-#ifndef _REPLACE_BUFFER_
-  qspiBuffers qspiBuffer; /* Buffers instance             */
-#endif
-  IfxQspi_SpiMaster spiMaster;                /* QSPI Master handle           */
-  IfxQspi_SpiMaster_Channel spiMasterChannel; /* QSPI Master Channel handle   */
-} qspiDma;
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
-void initAmbient(void);                    // 초기 설정
-void applyAmbient(void);                   // 현재 설정된 색 전송
-void setAmbientColor(int h, int s, int v); // hue(색조): 0-360, saturation(채도): 0-100, value(밝기): 0-100
+void init_I2C_module(void);
+void read_ext_device_address(void);
+void I2C_writeSingleByte(uint8 byte);
 
-#endif /* SPI_DMA_H_ */
+#endif /* I2C_READ_EXT_DEVICE_H_ */

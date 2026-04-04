@@ -29,8 +29,12 @@
 #include "Ifx_Cfg_Ssw.h"
 #include "Ifx_Types.h"
 
+#include "App_Scheduler.h"
+
 IFX_ALIGN(4)
 IfxCpu_syncEvent cpuSyncEvent = 0;
+
+void AppScheduling(void);
 
 void core0_main(void)
 {
@@ -46,7 +50,10 @@ void core0_main(void)
   IfxCpu_emitEvent(&cpuSyncEvent);
   IfxCpu_waitEvent(&cpuSyncEvent, 1);
 
+  Systeminit();
+
   while (1)
   {
+    AppScheduling();
   }
 }
