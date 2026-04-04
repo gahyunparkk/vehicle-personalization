@@ -336,7 +336,8 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                     App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_FEEDBACK_SUCCESS, now_ms);
                     g_app_manager_rfid_context.state_deadline_ms = now_ms + APP_MANAGER_RFID_SUCCESS_FEEDBACK_MS;
 
-                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_SUCCESS, &uid, TRUE, idx);
+                    uint8 new_idx = App_Manager_Rfid_DbContains(&uid);
+                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_SUCCESS, &uid, TRUE, new_idx);
                 }
                 else
                 {
@@ -707,7 +708,7 @@ static uint8 App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid)
 
     if (uid == NULL_PTR)
     {
-        return FALSE;
+        return 0xFF;
     }
 
     for (idx = 0U; idx < APP_MANAGER_RFID_DB_MAX_CARDS; ++idx)
@@ -744,7 +745,7 @@ static boolean App_Manager_Rfid_DbRegister(const Mfrc522_Uid *uid)
     }
 
     /* 이미 있는 UID면 중복 등록 대신 성공 처리 */
-    if (App_Manager_Rfid_DbContains(uid) == TRUE)
+    if (App_Manager_Rfid_DbContains(uid) != 0xFFu)
     {
         return TRUE;
     }

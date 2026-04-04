@@ -6,4 +6,4 @@
 uint32 Shared_Util_Time_GetNowMs(void);
 
 
-#endif;
+#endif
