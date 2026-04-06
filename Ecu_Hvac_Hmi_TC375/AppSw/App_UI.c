@@ -50,8 +50,10 @@ void App_Manager_UI_Init(void)
 {
   App_Manager_LCD_Init();
   LCD_clearScreen();
+  LCD_printString("Inited", LOWERLINE);
   Joystick_init();
   App_Manager_Ambient_Init();
+  Amb_on();
   uistate = ST_PROFILE_SEL;
   coolline[11] = 0xDF;
   heatline[11] = 0xDF;
@@ -92,7 +94,7 @@ void App_Manager_UI_Run(void)
   {
     if (++pushcnt > SW_LONGPRESS_10MS)
       pushcnt = SW_LONGPRESS_10MS;
-    if (pushcnt == SW_LONGPRESS_10MS)
+    if (pushcnt == SW_LONGPRESS_10MS - 1)
       sw_longpress();
   }
   else
@@ -109,7 +111,7 @@ void App_Manager_UI_Run(void)
   {
   case ST_PROFILE_SEL:
     LCD_printString("\x7FProfile Select\x7E", UPPERLINE);
-    profline[12] = profsel + '0';
+    profline[12] = profsel + '1';
     App_Manager_System_GetActiveProfileIndex(&nowprof);
     if (profsel == nowprof)
       profline[2] = '[', profline[13] = ']';
@@ -129,6 +131,9 @@ void App_Manager_UI_Run(void)
     Amb_getmode(&ambmode);
     switch (ambmode)
     {
+    case AMB_OFF:
+      LCD_printString("+     Off      -", LOWERLINE);
+      break;
     case AMB_CONSTANT:
       LCD_printString("+   Constant   -", LOWERLINE);
       break;
@@ -161,7 +166,7 @@ void App_Manager_UI_Run(void)
     break;
 
   case ST_PROFILE_ADD:
-    LCD_printString("\x7FRegister User \x7E", UPPERLINE);
+    LCD_printString("  Register User ", UPPERLINE);
     LCD_printString("  Tag New RFID  ", LOWERLINE);
     break;
   }
@@ -172,13 +177,14 @@ static void joyutask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
-    if (--profsel == 0) profsel = 3;
+    if (profsel-- == 0) profsel = 2;
     break;
   case ST_AMB_COL_SEL:
     App_Ambient_changeColor(-20);
     profupdate();
     break;
   case ST_AMB_MOD_SEL:
+    App_Ambient_Nextmode();
     App_Ambient_Nextmode();
     App_Ambient_Nextmode();
     App_Ambient_Nextmode();
@@ -202,7 +208,7 @@ static void joydtask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
-    if (++profsel == 4) profsel = 1;
+    if (profsel++ == 2) profsel = 0;
     break;
   case ST_AMB_COL_SEL:
     App_Ambient_changeColor(20);

@@ -60,16 +60,16 @@ static void App_Scheduler_Run_1ms(void)
 
 static void App_Scheduler_Run_10ms(void)
 {
-  App_Scheduler_Task_CanRx();
-  App_Scheduler_Task_System();
   App_Manager_UI_Run();
   App_Manager_Ambient_Run();
-  App_Scheduler_Task_CanTx();
 }
 
 static void App_Scheduler_Run_100ms(void)
 {
+  App_Scheduler_Task_CanRx();
+  App_Scheduler_Task_System();
   App_Manager_HVAC_Run();
+  App_Scheduler_Task_CanTx();
 }
 
 static void App_Scheduler_Run_1s(void)
@@ -78,6 +78,7 @@ static void App_Scheduler_Run_1s(void)
 
 void App_Scheduler_Init(void)
 {
+  init_UART();
   Driver_Stm_Init();
   App_Manager_UI_Init();
   App_Manaver_HVAC_Init();
@@ -130,9 +131,10 @@ static void App_Scheduler_Task_CanTx(void)
   Shared_Can_Frame_t tx_frame;
   uint8 pf;
   Shared_Profile_Table_t pft;
-  App_Manager_System_GetProfileTable(&pft);
+  
   if (g_app_scheduler_profile_table_tx_requested == TRUE)
   {
+    App_Manager_System_GetProfileTable(&pft);
     if (App_Can_Service_BuildProfileTableFrame(&pft, &tx_frame) == TRUE)
     {
       (void)App_Can_Service_WriteFrame(&tx_frame);
@@ -145,7 +147,7 @@ static void App_Scheduler_Task_CanTx(void)
   if (g_tx_idx_requested == TRUE)
   {
     App_Manager_System_GetActiveProfileIndex(&pf);
-    if (App_Can_Service_BuildStateFrame(pf, &tx_frame) == TRUE)
+    if (App_Can_Service_BuildProfileIdxFrame(pf, &tx_frame) == TRUE)
     {
       (void)App_Can_Service_WriteFrame(&tx_frame);
       UART_Printf("[TX] HH_IDX sent\r\n");
