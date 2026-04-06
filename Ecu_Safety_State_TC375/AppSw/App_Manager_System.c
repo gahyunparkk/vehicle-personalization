@@ -329,18 +329,70 @@ static void App_Manager_System_ClearProfileTable(Shared_Profile_Table_t *table)
 /*********************************************************************************************************************/
 static void App_Manager_System_LoadProfileTableFromDFlash(Shared_Profile_Table_t *profile_table)
 {
-    (void)profile_table;
+    Fee_Status_t load_status;
+    Fee_Status_t save_status;
 
-    /* TODO: DFlash load */
+    if (profile_table == NULL_PTR)
+    {
+        return;
+    }
+
+    load_status = Flash_LoadProfileTable(profile_table);
+
+    if (load_status == FEE_STATUS_OK)
+    {
+        UART_Printf("[SYSTEM] profile table loaded from DFlash\r\n");
+        return;
+    }
+
+    /*
+     * DFlash가 비어 있거나, 기존 데이터가 손상/무효인 경우
+     * fallback default profile을 RAM에 올린 뒤 1회 저장 시도
+     */
     App_Manager_System_LoadDummyProfileTable(profile_table);
+
+    UART_Printf("[SYSTEM] DFlash load failed (%d), default profile loaded\r\n",
+                (sint32)load_status);
+
+    if ((load_status == FEE_STATUS_EMPTY) ||
+        (load_status == FEE_STATUS_NOT_FOUND) ||
+        (load_status == FEE_STATUS_HEADER_ERROR) ||
+        (load_status == FEE_STATUS_CHECKSUM_ERROR))
+    {
+        save_status = Flash_SaveProfileTable(profile_table);
+
+        if (save_status == FEE_STATUS_OK)
+        {
+            UART_Printf("[SYSTEM] default profile saved to DFlash\r\n");
+        }
+        else
+        {
+            UART_Printf("[SYSTEM] default profile save failed (%d)\r\n",
+                        (sint32)save_status);
+        }
+    }
 }
 
 static void App_Manager_System_SaveProfileTableToDFlash(const Shared_Profile_Table_t *profile_table)
 {
-    (void)profile_table;
+    Fee_Status_t save_status;
 
-    /* TODO: DFlash save */
-    Flash_SaveProfileTable(profile_table);
+    if (profile_table == NULL_PTR)
+    {
+        return;
+    }
+
+    save_status = Flash_SaveProfileTable(profile_table);
+
+    if (save_status == FEE_STATUS_OK)
+    {
+        UART_Printf("[SYSTEM] profile table saved to DFlash\r\n");
+    }
+    else
+    {
+        UART_Printf("[SYSTEM] profile table save failed (%d)\r\n",
+                    (sint32)save_status);
+    }
 }
 
 /*********************************************************************************************************************/
@@ -390,5 +442,5 @@ static void App_Manager_System_LoadDummyProfileTable(Shared_Profile_Table_t *pro
     profile_table->profile[SHARED_PROFILE_INDEX_EMERGENCY].ac_on_threshold     = 30;
     profile_table->profile[SHARED_PROFILE_INDEX_EMERGENCY].heater_on_threshold = 15;
 
-    UART_Printf("[SYSTEM] dummy profile table loaded\r\n");
+    UART_Printf("[SYSTEM] default profile table loaded\r\n");
 }
