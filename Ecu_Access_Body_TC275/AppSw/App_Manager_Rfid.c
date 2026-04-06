@@ -130,7 +130,6 @@ static App_Manager_Rfid_Context_t g_app_manager_rfid_context;
 /* 등록된 카드 UID를 저장하는 간단한 내부 DB */
 static App_Manager_Rfid_DbEntry_t g_app_manager_rfid_db[APP_MANAGER_RFID_DB_MAX_CARDS];
 
-
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -147,6 +146,7 @@ static void    App_Manager_Rfid_SetState(App_Manager_Rfid_State_t next_state, ui
 /* 카드 감지/UID 읽기 래퍼 함수 */
 static boolean App_Manager_Rfid_IsCardPresent(void);
 static boolean App_Manager_Rfid_ReadCardUid(Mfrc522_Uid *out_uid);
+static void    App_Manager_Rfid_SyncProfileTable(const Shared_Profile_Table_t *profile_table);
 
 /* 내부 DB 조회/등록 함수 */
 static uint8   App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid);
@@ -216,30 +216,30 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                            const App_Manager_Rfid_Input_t *input,
                            App_Manager_Rfid_Output_t *out)
 {
-    Mfrc522_Uid               uid;
-    boolean                   enable_flag;
-    boolean                   register_flag;
+    Mfrc522_Uid                 uid;
+    boolean                     enable_flag;
+    boolean                     register_flag;
+    const Shared_Profile_Table_t *profile_table;
 
-    /* 기본 출력값은 "이벤트 없음" */
     *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_NONE, NULL_PTR, FALSE, 0xFF);
 
-    /* 입력이 NULL일 가능성에 대비한 기본값 */
     enable_flag   = FALSE;
     register_flag = FALSE;
+    profile_table = NULL_PTR;
 
-    /* 입력 포인터가 유효하면 외부 플래그 값을 가져온다 */
     if (input != NULL_PTR)
     {
         enable_flag   = input->enable_flag;
         register_flag = input->register_flag;
+        profile_table = input->profile_table;
     }
 
-
-    /* 드라이버 초기화 실패 시 어떠한 동작도 하지 않고 즉시 반환 */
     if (g_app_manager_rfid_context.init_ok == FALSE)
     {
         return;
     }
+
+    App_Manager_Rfid_SyncProfileTable(profile_table);
 
     /* 현재 상태에 따라 상태별 처리 수행 */
     switch (g_app_manager_rfid_context.state)
@@ -788,4 +788,34 @@ static App_Manager_Rfid_Output_t App_Manager_Rfid_MakeOutput(App_Manager_Rfid_Ev
     }
 
     return out;
+}
+
+
+static void App_Manager_Rfid_SyncProfileTable(const Shared_Profile_Table_t *profile_table)
+{
+    uint8  idx;
+    uint16 profile_id;
+
+    if (profile_table == NULL_PTR)
+    {
+        return;
+    }
+
+    for (idx = 0U; idx < APP_MANAGER_RFID_DB_MAX_CARDS; ++idx)
+    {
+        g_app_manager_rfid_db[idx].used = FALSE;
+        App_Manager_Rfid_ClearUid(&g_app_manager_rfid_db[idx].uid);
+    }
+
+    for (idx = 0U;
+         (idx < SHARED_PROFILE_NORMAL_COUNT) && (idx < APP_MANAGER_RFID_DB_MAX_CARDS);
+         ++idx)
+    {
+        profile_id = profile_table->profile[idx].profile_id;
+
+        g_app_manager_rfid_db[idx].used       = TRUE;
+        g_app_manager_rfid_db[idx].uid.size   = 2U;
+        g_app_manager_rfid_db[idx].uid.uid[0] = (uint8)(profile_id >> 8U);
+        g_app_manager_rfid_db[idx].uid.uid[1] = (uint8)(profile_id & 0xFFU);
+    }
 }

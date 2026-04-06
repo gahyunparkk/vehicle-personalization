@@ -3,6 +3,7 @@
 
 #include "Base_Driver_Mfrc522.h"
 #include "Platform_Types.h"
+#include "Shared_Profile.h"
 
 /* 외부로 알릴 이벤트 */
 typedef enum
@@ -13,11 +14,12 @@ typedef enum
     APP_MANAGER_RFID_EVENT_LOCKOUT
 } App_Manager_Rfid_Event_t;
 
-/* 외부 입력: 기능 활성 여부 / 등록 모드 여부 */
+/* 외부 입력: 기능 활성 여부 / 등록 모드 여부 / 프로필 테이블 */
 typedef struct
 {
-    boolean enable_flag;
-    boolean register_flag;
+    boolean                      enable_flag;
+    boolean                      register_flag;
+    const Shared_Profile_Table_t *profile_table;
 } App_Manager_Rfid_Input_t;
 
 /* 외부 출력: 이벤트와 UID */

@@ -579,6 +579,7 @@ void App_Init(void)
 
     rfidIn.enable_flag   = FALSE;
     rfidIn.register_flag = FALSE;
+    rfidIn.profile_table = &g_app.profileTable;
 
     nowMs = App_GetNowMs();
 
@@ -608,6 +609,7 @@ void AppTask10ms(void)
 
     in.enable_flag   = App_IsRfidEnabledState(g_app.currentState);
     in.register_flag = FALSE;
+    in.profile_table = &g_app.profileTable;
 
     App_Manager_Rfid_Run(nowMs, &in, &g_app.rfidOut);
 
