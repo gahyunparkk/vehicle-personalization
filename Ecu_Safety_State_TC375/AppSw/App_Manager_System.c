@@ -1,6 +1,7 @@
 #include "App_Manager_System.h"
 #include "Platform_Types.h"
 #include "Ifx_Types.h"
+#include "Base_Fee.h"
 
 typedef struct
 {
@@ -149,13 +150,6 @@ void App_Manager_System_Run(uint32 now_ms,
             g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
             App_Manager_System_SetState(SHARED_SYSTEM_STATE_EMERGENCY, now_ms);
         }
-        else if ((input->auth_event_valid == TRUE) &&
-                 (App_Manager_System_IsNormalProfileIndex(input->active_profile_index) == TRUE) &&
-                 (input->active_profile_index != g_app_manager_system_context.active_profile_index))
-        {
-            g_app_manager_system_context.active_profile_index = input->active_profile_index;
-            App_Manager_System_SetState(SHARED_SYSTEM_STATE_SETUP, now_ms);
-        }
         else
         {
             /* keep state */
@@ -174,13 +168,8 @@ void App_Manager_System_Run(uint32 now_ms,
     case SHARED_SYSTEM_STATE_DENIED:
         g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_INVALID;
 
-        if (App_Manager_System_IsEmergencyRequired(local_temperature_x10) == TRUE)
-        {
-            g_app_manager_system_context.active_profile_index = SHARED_PROFILE_INDEX_EMERGENCY;
-            App_Manager_System_SetState(SHARED_SYSTEM_STATE_EMERGENCY, now_ms);
-        }
-        else if (App_Manager_System_GetElapsed(now_ms,
-                                               g_app_manager_system_context.state_enter_time_ms) >=
+        if (App_Manager_System_GetElapsed(now_ms,
+                                          g_app_manager_system_context.state_enter_time_ms) >=
                  APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS)
         {
             App_Manager_System_SetState(SHARED_SYSTEM_STATE_SLEEP, now_ms);
@@ -345,6 +334,7 @@ static void App_Manager_System_LoadProfileTableFromDFlash(Shared_Profile_Table_t
     /* TODO:
      * Load stored profile table from DFlash.
      */
+    Flash_LoadProfileTable(profile_table);
 }
 
 static void App_Manager_System_SaveProfileTableToDFlash(const Shared_Profile_Table_t *profile_table)
@@ -354,4 +344,5 @@ static void App_Manager_System_SaveProfileTableToDFlash(const Shared_Profile_Tab
     /* TODO:
      * Save current profile table to DFlash.
      */
+    Flash_SaveProfileTable(profile_table);
 }

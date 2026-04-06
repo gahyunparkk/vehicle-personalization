@@ -149,14 +149,14 @@ static boolean App_Manager_Rfid_IsCardPresent(void);
 static boolean App_Manager_Rfid_ReadCardUid(Mfrc522_Uid *out_uid);
 
 /* 내부 DB 조회/등록 함수 */
-static sint8   App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid);
+static uint8   App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid);
 static boolean App_Manager_Rfid_DbRegister(const Mfrc522_Uid *uid);
 
 /* 외부 출력 구조체 생성 함수 */
 static App_Manager_Rfid_Output_t App_Manager_Rfid_MakeOutput(App_Manager_Rfid_Event_t event,
                                                              const Mfrc522_Uid       *uid,
                                                              boolean                  uid_valid,
-                                                             sint8                    uid_idx);
+                                                             uint8                    uid_idx);
 
 /*********************************************************************************************************************/
 /*---------------------------------------------Function Implementations----------------------------------------------*/
@@ -221,7 +221,7 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
     boolean                   register_flag;
 
     /* 기본 출력값은 "이벤트 없음" */
-    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_NONE, NULL_PTR, FALSE, -1);
+    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_NONE, NULL_PTR, FALSE, 0xFF);
 
     /* 입력이 NULL일 가능성에 대비한 기본값 */
     enable_flag   = FALSE;
@@ -312,8 +312,8 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
             g_app_manager_rfid_context.has_current_uid = TRUE;
 
             /* 이미 등록된 카드라면 인증 성공 */
-            sint8 idx = App_Manager_Rfid_DbContains(&uid);
-            if (idx != -1)
+            uint8 idx = App_Manager_Rfid_DbContains(&uid);
+            if (idx != 0xFF)
             {
                 /* 성공 시 실패 누적 카운트 초기화 */
                 g_app_manager_rfid_context.fail_count = 0U;
@@ -336,7 +336,8 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                     App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_FEEDBACK_SUCCESS, now_ms);
                     g_app_manager_rfid_context.state_deadline_ms = now_ms + APP_MANAGER_RFID_SUCCESS_FEEDBACK_MS;
 
-                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_SUCCESS, &uid, TRUE, idx);
+                    uint8 new_idx = App_Manager_Rfid_DbContains(&uid);
+                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_SUCCESS, &uid, TRUE, new_idx);
                 }
                 else
                 {
@@ -354,7 +355,7 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                         App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_LOCKOUT, now_ms);
                         g_app_manager_rfid_context.lockout_deadline_ms = now_ms + APP_MANAGER_RFID_LOCKOUT_MS;
 
-                        *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_LOCKOUT, &uid, TRUE, -1);
+                        *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_LOCKOUT, &uid, TRUE, 0xFF);
                     }
                     else
                     {
@@ -362,7 +363,7 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                         App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_FEEDBACK_FAIL, now_ms);
                         g_app_manager_rfid_context.state_deadline_ms = now_ms + APP_MANAGER_RFID_FAIL_FEEDBACK_MS;
 
-                        *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_FAIL, &uid, TRUE, -1);
+                        *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_FAIL, &uid, TRUE, 0xFF);
                     }
                 }
             }
@@ -377,7 +378,7 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                     App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_LOCKOUT, now_ms);
                     g_app_manager_rfid_context.lockout_deadline_ms = now_ms + APP_MANAGER_RFID_LOCKOUT_MS;
 
-                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_LOCKOUT, &uid, TRUE, -1);
+                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_LOCKOUT, &uid, TRUE, 0xFF);
                 }
                 else
                 {
@@ -385,7 +386,7 @@ void  App_Manager_Rfid_Run(uint32 now_ms,
                     App_Manager_Rfid_SetState(APP_MANAGER_RFID_STATE_FEEDBACK_FAIL, now_ms);
                     g_app_manager_rfid_context.state_deadline_ms = now_ms + APP_MANAGER_RFID_FAIL_FEEDBACK_MS;
 
-                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_FAIL, &uid, TRUE, -1);
+                    *out = App_Manager_Rfid_MakeOutput(APP_MANAGER_RFID_EVENT_FAIL, &uid, TRUE, 0xFF);
                 }
             }
         }
@@ -698,16 +699,16 @@ static boolean App_Manager_Rfid_ReadCardUid(Mfrc522_Uid *out_uid)
  * UID가 내부 DB에 이미 등록되어 있는지 확인
  *
  * 반환
- * - idx   : 이미 등록됨
- * - -1    : 등록되지 않음
+ * - idx  : 이미 등록됨
+ * - 0xFF : 등록되지 않음
  */
-static sint8 App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid)
+static uint8 App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid)
 {
     uint8 idx;
 
     if (uid == NULL_PTR)
     {
-        return FALSE;
+        return 0xFF;
     }
 
     for (idx = 0U; idx < APP_MANAGER_RFID_DB_MAX_CARDS; ++idx)
@@ -719,7 +720,7 @@ static sint8 App_Manager_Rfid_DbContains(const Mfrc522_Uid *uid)
         }
     }
 
-    return -1;
+    return 0xFF;
 }
 
 /*
@@ -744,7 +745,7 @@ static boolean App_Manager_Rfid_DbRegister(const Mfrc522_Uid *uid)
     }
 
     /* 이미 있는 UID면 중복 등록 대신 성공 처리 */
-    if (App_Manager_Rfid_DbContains(uid) == TRUE)
+    if (App_Manager_Rfid_DbContains(uid) != 0xFFu)
     {
         return TRUE;
     }
@@ -783,7 +784,7 @@ static boolean App_Manager_Rfid_DbRegister(const Mfrc522_Uid *uid)
 static App_Manager_Rfid_Output_t App_Manager_Rfid_MakeOutput(App_Manager_Rfid_Event_t event,
                                                              const Mfrc522_Uid       *uid,
                                                              boolean                  uid_valid,
-                                                             sint8                    uid_idx)
+                                                             uint8                    uid_idx)
 {
     App_Manager_Rfid_Output_t out;
 

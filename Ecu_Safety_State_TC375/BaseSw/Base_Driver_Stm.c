@@ -27,7 +27,7 @@ void Base_Driver_Stm_Init(void)
 
     g_base_driver_stm.stm_config.triggerPriority = BASE_DRIVER_STM_ISR_PRIORITY;
     g_base_driver_stm.stm_config.typeOfService   = IfxSrc_Tos_cpu0;
-    g_base_driver_stm.stm_config.ticks           = g_base_driver_stm_ticks_1ms;
+    g_base_driver_stm.stm_config.ticks           = (uint32)g_base_driver_stm_ticks_1ms;
 
     IfxStm_initCompare(g_base_driver_stm.stm_sfr, &g_base_driver_stm.stm_config);
 
@@ -53,7 +53,7 @@ void Base_Driver_Stm_Isr(void)
 
     IfxStm_increaseCompare(g_base_driver_stm.stm_sfr,
                            g_base_driver_stm.stm_config.comparator,
-                           g_base_driver_stm_ticks_1ms);
+                           (uint32)g_base_driver_stm_ticks_1ms);
 
     g_base_driver_stm_counter_1ms++;
 
@@ -78,4 +78,33 @@ void Base_Driver_Stm_Isr(void)
     {
         g_base_driver_stm_scheduling_flag.scheduling_10s_flag = 1u;
     }
+}
+
+void Base_Driver_Stm_GetAndClearSchedulingFlags(Base_Driver_Stm_SchedulingFlag_t *flags)
+{
+    boolean interrupt_state;
+
+    if (flags == NULL_PTR)
+    {
+        return;
+    }
+
+    interrupt_state = IfxCpu_disableInterrupts();
+
+    *flags = g_base_driver_stm_scheduling_flag;
+    Base_Driver_Stm_ClearSchedulingFlags();
+
+    IfxCpu_restoreInterrupts(interrupt_state);
+}
+
+uint32 Base_Driver_Stm_GetNowMs(void)
+{
+    uint32  now_ms;
+    boolean interrupt_state;
+
+    interrupt_state = IfxCpu_disableInterrupts();
+    now_ms = g_base_driver_stm_counter_1ms;
+    IfxCpu_restoreInterrupts(interrupt_state);
+
+    return now_ms;
 }

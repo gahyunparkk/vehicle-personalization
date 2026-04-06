@@ -1,7 +1,7 @@
 #include "Shared_Profile.h"
 
 static uint8 currentProfile = 0;
-static UserProfile_t profiles[MAX_PROFILES];
+static Shared_Profile_t profiles[SHARED_PROFILE_TOTAL_COUNT];
 
 void Profile_init(uint8 prof)
 {
@@ -18,12 +18,12 @@ void setCurrentProfile(uint8 prof)
   currentProfile = prof;
 }
 
-UserProfile_t getProfile(uint8 prof)
+Shared_Profile_t getProfile(uint8 prof)
 {
   return profiles[prof - 1];
 }
 
-void updateProfile(uint8 prof, UserProfile_t up)
+void updateProfile(uint8 prof, Shared_Profile_t up)
 {
   profiles[prof - 1] = up;
 }
