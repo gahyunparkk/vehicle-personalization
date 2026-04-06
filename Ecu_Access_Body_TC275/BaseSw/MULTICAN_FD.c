@@ -26,6 +26,10 @@ void initMultican(void)
     g_multican.nodeConfig.txPin  = &IfxMultican_TXD0_P20_8_OUT;
     g_multican.nodeConfig.flexibleDataRate = TRUE;
 
+    /* ------------------------------------------------------------------------------------------------------------- */
+     /* 6. CAN / CAN FD baud 설정                                                                                     */
+     /* arbitration: 500 kbps, data: 5 Mbps                                                                          */
+     /* ------------------------------------------------------------------------------------------------------------- */
     g_multican.nodeConfig.fdConfig.nominalBaudrate = 500000;
     g_multican.nodeConfig.fdConfig.fastBaudrate = 5000000;
     g_multican.nodeConfig.fdConfig.fastSamplePoint = 7500;
