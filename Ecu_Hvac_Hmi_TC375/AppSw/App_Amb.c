@@ -18,6 +18,9 @@
 // 변화 속도 분주비
 #define PRESCALER 10
 
+// 비상 모드 깜빡임 속도
+#define BLINKPERIOD 10
+
 /*********************************************************************************************************************/
 /*--------------------------------------------Private Variables/Constants--------------------------------------------*/
 /*********************************************************************************************************************/
@@ -44,7 +47,7 @@ void Amb_getHue(uint16 *hue);
 void App_Manager_Ambient_Init(void)
 {
   initNeopixel();
-  ambmode = AMB_CONSTANT;
+  ambmode = AMB_OFF;
   baseh = 0;
   bases = 90;
   basev = MAXVAL;
@@ -56,6 +59,9 @@ void App_Ambient_Nextmode(void)
   breathdesc = TRUE;
   switch (ambmode)
   {
+  case AMB_OFF:
+    ambmode = AMB_CONSTANT;
+    break;
   case AMB_CONSTANT:
     ambmode = AMB_BREATH;
     break;
@@ -68,7 +74,7 @@ void App_Ambient_Nextmode(void)
     ambmode = AMB_WAVE_R;
     break;
   case AMB_WAVE_R:
-    ambmode = AMB_CONSTANT;
+    ambmode = AMB_OFF;
     break;
   }
 }
@@ -76,8 +82,11 @@ void App_Ambient_Nextmode(void)
 void App_Manager_Ambient_Run(void)
 {
   static int cnt = PRESCALER;
+  static int blinkcnt = BLINKPERIOD;
+
   if (--cnt) return;
   cnt = PRESCALER;
+
   if (breathdesc)
   {
     if ((nowv -= (ambmode == AMB_BREATH ? DVAL_BR : DVAL_WA)) < MINVAL)
@@ -90,6 +99,9 @@ void App_Manager_Ambient_Run(void)
   }
   switch (ambmode)
   {
+  case AMB_OFF:
+    setAllLEDColorHSV(baseh, bases, 0);
+    break;
   case AMB_CONSTANT:
     setAllLEDColorHSV(baseh, bases, basev);
     break;
@@ -101,6 +113,13 @@ void App_Manager_Ambient_Run(void)
     break;
   case AMB_WAVE_R:
     shiftLedsForwardHSV(baseh, bases, nowv);
+    break;
+  case AMB_BLINK:
+    if (--blinkcnt)
+      break;
+    blinkcnt = BLINKPERIOD;
+    nowv = nowv ? 0 : MAXVAL;
+    setAllLEDColorHSV(baseh, bases, nowv);
     break;
   }
 
@@ -116,6 +135,16 @@ void App_Ambient_changeColor(sint8 amount)
 void Amb_getmode(Amb_mode_e *mode)
 {
   *mode = ambmode;
+}
+
+void Amb_setmode(Amb_mode_e mode)
+{
+  ambmode = mode;
+}
+
+void Amb_setcolor2x(uint8 amount)
+{
+  baseh = 2 * (int)amount;
 }
 
 void Amb_off(void)

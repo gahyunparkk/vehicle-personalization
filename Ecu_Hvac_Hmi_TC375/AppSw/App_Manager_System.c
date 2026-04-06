@@ -10,7 +10,9 @@
 /*********************************************************************************************************************/
 #include <string.h>
 
+#include "App_Amb.h"
 #include "App_Can_Service.h"
+#include "App_Hvac.h"
 #include "Ifx_Types.h"
 #include "MCMCAN_FD.h"
 #include "Platform_Types.h"
@@ -80,6 +82,10 @@ void App_Manager_System_GetProfileTable(Shared_Profile_Table_t *profile_table)
 void App_Manager_System_SetActiveProfileIndex(uint8 idx)
 {
   g_app_manager_system_context.active_profile_index = idx;
+  Amb_setmode((g_app_manager_system_context.profile_table.profile[idx].ambient_light & 0xff00) >> 4);
+  Amb_setcolor2x(g_app_manager_system_context.profile_table.profile[idx].ambient_light & 0xff);
+  Hvac_setCoolThreshold(g_app_manager_system_context.profile_table.profile[idx].ac_on_threshold);
+  Hvac_setHeatThreshold(g_app_manager_system_context.profile_table.profile[idx].heater_on_threshold);
 }
 
 void App_Manager_System_GetActiveProfileIndex(uint8 *idx)
@@ -178,7 +184,7 @@ static boolean App_PollProfileTableAtInit(uint32 timeout_ms)
   uint32 rx_data[MAXIMUM_CAN_DATA_PAYLOAD];
   uint32 rx_id;
   const uint8 *rx_bytes;
-//  uint32 start_ms;
+  //  uint32 start_ms;
 
   // start_ms = App_GetNowMs();
 

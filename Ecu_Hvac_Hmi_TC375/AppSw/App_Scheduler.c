@@ -60,16 +60,16 @@ static void App_Scheduler_Run_1ms(void)
 
 static void App_Scheduler_Run_10ms(void)
 {
-  App_Scheduler_Task_CanRx();
-  App_Scheduler_Task_System();
   App_Manager_UI_Run();
   App_Manager_Ambient_Run();
-  App_Scheduler_Task_CanTx();
 }
 
 static void App_Scheduler_Run_100ms(void)
 {
+  App_Scheduler_Task_CanRx();
+  App_Scheduler_Task_System();
   App_Manager_HVAC_Run();
+  App_Scheduler_Task_CanTx();
 }
 
 static void App_Scheduler_Run_1s(void)
@@ -78,6 +78,7 @@ static void App_Scheduler_Run_1s(void)
 
 void App_Scheduler_Init(void)
 {
+  init_UART();
   Driver_Stm_Init();
   App_Manager_UI_Init();
   App_Manaver_HVAC_Init();
