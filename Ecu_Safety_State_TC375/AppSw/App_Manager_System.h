@@ -14,10 +14,8 @@
 #define APP_MANAGER_SYSTEM_SETUP_HOLD_MS                  (100U)
 #define APP_MANAGER_SYSTEM_DENIED_TIMEOUT_MS              (5000U)
 
-#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_HIGH_X10        (500)
-#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_HIGH_X10  (400)
-#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_LOW_X10         (-200)
-#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_CLEAR_LOW_X10   (-100)
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_HIGH_X10        (300U)
+#define APP_MANAGER_SYSTEM_TEMP_EMERGENCY_LOW_X10         (-100U)
 
 /*********************************************************************************************************************/
 /*-------------------------------------------------Data Structures---------------------------------------------------*/
