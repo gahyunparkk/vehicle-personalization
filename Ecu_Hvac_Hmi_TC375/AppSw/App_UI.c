@@ -93,7 +93,7 @@ void App_Manager_UI_Run(void)
   {
     if (++pushcnt > SW_LONGPRESS_10MS)
       pushcnt = SW_LONGPRESS_10MS;
-    if (pushcnt == SW_LONGPRESS_10MS)
+    if (pushcnt == SW_LONGPRESS_10MS - 1)
       sw_longpress();
   }
   else
@@ -110,7 +110,7 @@ void App_Manager_UI_Run(void)
   {
   case ST_PROFILE_SEL:
     LCD_printString("\x7FProfile Select\x7E", UPPERLINE);
-    profline[12] = profsel + '0';
+    profline[12] = profsel + '1';
     App_Manager_System_GetActiveProfileIndex(&nowprof);
     if (profsel == nowprof)
       profline[2] = '[', profline[13] = ']';
@@ -162,7 +162,7 @@ void App_Manager_UI_Run(void)
     break;
 
   case ST_PROFILE_ADD:
-    LCD_printString("\x7FRegister User \x7E", UPPERLINE);
+    LCD_printString("  Register User ", UPPERLINE);
     LCD_printString("  Tag New RFID  ", LOWERLINE);
     break;
   }
@@ -173,7 +173,7 @@ static void joyutask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
-    if (--profsel == 0) profsel = 3;
+    if (profsel-- == 0) profsel = 2;
     break;
   case ST_AMB_COL_SEL:
     App_Ambient_changeColor(-20);
@@ -203,7 +203,7 @@ static void joydtask()
   switch (uistate)
   {
   case ST_PROFILE_SEL:
-    if (++profsel == 4) profsel = 1;
+    if (profsel++ == 2) profsel = 0;
     break;
   case ST_AMB_COL_SEL:
     App_Ambient_changeColor(20);

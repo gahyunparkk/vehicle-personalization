@@ -118,9 +118,9 @@ static void LCD_init_static(void)
 
 void App_Manager_LCD_Init(void)
 {
-  LCD_init_static();
-  LCD_init_static();
-  LCD_init_static();
+  LCD_init_static(), delay_us(1000);
+  LCD_init_static(), delay_us(1000);
+  LCD_init_static(), delay_us(1000);
 }
 
 void LCD_clearScreen(void)
