@@ -2,6 +2,8 @@
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
 #include "App_UI.h"
+#include "App_Manager_System.h"
+#include "Shared_Profile.h"
 
 /*********************************************************************************************************************/
 /*------------------------------------------------------Macros-------------------------------------------------------*/
@@ -24,7 +26,7 @@ static enum {
 static char coolline[] = "+  Over        -";
 static char heatline[] = "+  Under       -";
 static char profline[] = "+  Profile 0   -";
-static uint16 profsel = 0;
+static uint8 profsel = 0;
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
@@ -35,10 +37,6 @@ static void joyltask(void);
 static void joyrtask(void);
 static void sw_shortpress(void);
 static void sw_longpress(void);
-
-// TODO
-static uint8 getCurrentProfile(void);
-static void setCurrentProfile(uint8 prof);
 
 void App_Manager_UI_Init(void);
 void App_Manager_UI_Run(void);
@@ -57,7 +55,7 @@ void App_Manager_UI_Init(void)
   heatline[11] = 0xDF;
   coolline[12] = 'C';
   heatline[12] = 'C';
-  profsel = getCurrentProfile();
+  profsel = App_Manager_System_GetActiveProfileIndex();
 }
 
 void App_Manager_UI_Run(void)
@@ -109,7 +107,7 @@ void App_Manager_UI_Run(void)
   case ST_PROFILE_SEL:
     LCD_printString("\x7FProfile Select\x7E", UPPERLINE);
     profline[12] = profsel + '0';
-    if (profsel == getCurrentProfile())
+    if (profsel == App_Manager_System_GetActiveProfileIndex())
       profline[2] = '[', profline[13] = ']';
     else
       profline[2] = ' ', profline[13] = ' ';
@@ -267,7 +265,7 @@ static void sw_shortpress(void)
 {
   if (uistate == ST_PROFILE_SEL)
   {
-    setCurrentProfile(profsel);
+    App_Manager_System_SetActiveProfileIndex(profsel);
   }
   if (uistate == ST_AMB_COL_SEL)
   {
@@ -290,15 +288,4 @@ static void sw_longpress(void)
   }
   // else
   // uistate = ST_PROFILE_SEL;
-}
-
-static uint8 cp = 1;
-static uint8 getCurrentProfile(void) // TODO
-{
-  return cp;
-}
-
-static void setCurrentProfile(uint8 prof) // TODO
-{
-  cp = prof;
 }

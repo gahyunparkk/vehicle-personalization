@@ -24,21 +24,22 @@
 /*********************************************************************************************************************/
 volatile static sint8 heat_threshold;
 volatile static sint8 cool_threshold;
+volatile static sint8 currentTemp;
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Function Prototypes------------------------------------------------*/
 /*********************************************************************************************************************/
-// 구현 필요한 함수
-static sint8 Hvac_getTemperature(void);
+void App_Manaver_HVAC_Init(void);
 
-// 외부 API
-void App_Manager_Ambient_Init(void);
-void App_Ambient_Nextmode(void);
-void App_Manager_Ambient_Run(void);
-void App_Ambient_changeColor(sint8 amount);
-void Amb_getmode(Amb_mode_e *mode);
-void Amb_off(void);
-void Amb_on(void);
+// 온도 설정 함수
+uint8 Hvac_setHeatThreshold(sint8 th);
+uint8 Hvac_getHeatThreshold(void);
+uint8 Hvac_setCoolThreshold(sint8 th);
+uint8 Hvac_getCoolThreshold(void);
+void App_Manager_Hvac_updateTemp(sint8 temp);
+
+// 주기적으로 실행해야 할 함수
+void App_Manager_HVAC_Run(void);
 
 // 내부 라이브러리
 static void turnonCooling(void);
@@ -87,12 +88,11 @@ uint8 Hvac_getCoolThreshold(void)
 
 void App_Manager_HVAC_Run(void)
 {
-  volatile sint8 temp = Hvac_getTemperature();
-  if (temp >= cool_threshold + 2)
+  if (currentTemp >= cool_threshold + 2)
     turnonCooling();
-  else if (temp <= heat_threshold - 2)
+  else if (currentTemp <= heat_threshold - 2)
     turnonHeating();
-  else if (temp <= cool_threshold - 1 && temp >= heat_threshold + 1)
+  else if (currentTemp <= cool_threshold - 1 && currentTemp >= heat_threshold + 1)
     turnoff();
 }
 
@@ -115,7 +115,7 @@ static void turnoff(void)
   Fan_setSpeed(0);
 }
 
-static sint8 Hvac_getTemperature(void) // TODO
+void App_Manager_Hvac_updateTemp(sint8 temp)
 {
-  return 22;
+  currentTemp = temp;
 }
