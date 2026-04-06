@@ -2,8 +2,8 @@
 #define MCMCAN_FD_H
 
 #include "Ifx_Types.h"
-#include "IfxCan_Can.h"
-#include "IfxCan.h"
+#include "Can/Can/IfxCan_Can.h"
+//#include "Can/Can/IfxCan.h"
 #include "IfxPort.h"
 #include "IfxScuWdt.h"
 #include <string.h>
