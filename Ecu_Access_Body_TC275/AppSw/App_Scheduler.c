@@ -502,6 +502,8 @@ static void App_HandleState100ms(void)
         break;
 
     case SHARED_SYSTEM_STATE_ACTIVATED:
+        App_SaveCurrentPositionToActiveProfile();
+        App_ApplyProfileByIndex(g_app.activeProfileIdx);
         DoorActuator_Open(&g_app.door);
         break;
 
@@ -510,7 +512,6 @@ static void App_HandleState100ms(void)
 
         if (g_app.shutdownSaveIssued == FALSE)
         {
-            App_SaveCurrentPositionToActiveProfile();
             /* TODO: 저장된 profile table CAN 송신 */
             g_app.shutdownSaveIssued = TRUE;
             break;
@@ -697,7 +698,6 @@ void AppTask10ms(void)
             UART_Printf("[RFID] lockout st=%u\r\n", g_app.currentState);
         }
     }
-
     App_HandleCanTx10ms();
 }
 
@@ -721,6 +721,7 @@ void AppTask1000ms(void)
      * - heartbeat
      * - profile table periodic tx
      */
+    //g_app.txProfileTableRequested = TRUE;
 }
 
 void AppScheduling(void)
@@ -797,10 +798,13 @@ static void App_HandleCanRx1ms(void)
                          rx_bytes,
                          sizeof(profile_table_msg));
 
-            /* 프로필 테이블 저장 */
-            (void)memcpy(&g_app.profileTable,
-                         &profile_table_msg,
-                         sizeof(Shared_Profile_Table_t));
+            /* 프로필 테이블 저장: 모터 값 이외의 것들만 갱신 */
+            g_app.profileTable.profile[g_app.activeProfileIdx].ac_on_threshold
+                            = profile_table_msg.profile[g_app.activeProfileIdx].ac_on_threshold;
+            g_app.profileTable.profile[g_app.activeProfileIdx].heater_on_threshold
+                            = profile_table_msg.profile[g_app.activeProfileIdx].heater_on_threshold;
+            g_app.profileTable.profile[g_app.activeProfileIdx].ambient_light       
+                            = profile_table_msg.profile[g_app.activeProfileIdx].ambient_light;
 
             if (rx_id == SHARED_CAN_MSG_ID_SS_PROFILE_TABLE)
             {
@@ -863,8 +867,7 @@ static void App_HandleCanTx10ms(void)
      * - active/shutdown 시점에 현재 테이블을 다른 ECU로 공유할 때 사용
      * - Shared_Profile_Table_t 크기가 40B라는 전제에서 1 frame 전송
      */
-    /*
-    if (g_app.txProfileTableRequested == TRUE)
+    else if (g_app.txProfileTableRequested == TRUE)
     {
         (void)memset(tx_data, 0, sizeof(tx_data));
 
@@ -874,11 +877,10 @@ static void App_HandleCanTx10ms(void)
 
         transmitCanMessage(SHARED_CAN_MSG_ID_AB_PROFILE_TABLE, tx_data);
 
-        UART_Printf("[TX] AB_PROFILE_TABLE sent\r\n");
+        //UART_Printf("[TX] AB_PROFILE_TABLE sent\r\n");
 
         g_app.txProfileTableRequested = FALSE;
     }
-    */
 }
 
 /* -------------------------------------------------------------------------------------------------
