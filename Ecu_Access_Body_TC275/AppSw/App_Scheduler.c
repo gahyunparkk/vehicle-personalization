@@ -95,8 +95,6 @@ typedef struct
     Shared_Profile_Table_t profileTable;
     App_Manager_Rfid_Output_t rfidOut;
 
-    boolean                shutdownSaveIssued;
-    boolean                shutdownParkIssued;
     boolean                rfidTransitionLatched;
 
     /* CAN TX request */
@@ -134,6 +132,7 @@ static void    App_InitSeatAxis(void);
 static void    App_InitDoor(void);
 
 static void    App_OnStateChanged(uint8 newState);
+static void    App_HandleStateTransition1ms(void);
 static void    App_UpdateSystemState(uint8 newState);
 
 static sint32  App_ProfileToMirrorTick(uint8 mirrorAngle);
@@ -143,10 +142,11 @@ static uint8   App_SeatTickToProfile(sint32 seatTick);
 
 static void    App_ApplyProfileByIndex(uint8 profileIdx);
 static void    App_SaveCurrentPositionToActiveProfile(void);
+static void    App_MergeReceivedProfileTable(const Shared_Profile_Table_t *profileTable);
 
 static void    App_HandleButtons1ms(void);
-static void    App_HandleRfid10ms(void);
-static void    App_HandleStateEntry100ms(void);
+static void    App_HandleRfid1ms(void);
+static void    App_HandleStateEntry(void);
 static void    App_HandleStateSteady100ms(void);
 static void    App_UpdateDebug(void);
 
@@ -303,9 +303,6 @@ static void App_InitDoor(void)
 
 static void App_OnStateChanged(uint8 newState)
 {
-    g_app.shutdownSaveIssued  = FALSE;
-    g_app.shutdownParkIssued  = FALSE;
-
     if (newState == SHARED_SYSTEM_STATE_SLEEP)
     {
         g_app.activeProfileIdx      = SHARED_PROFILE_INDEX_INVALID;
@@ -315,6 +312,16 @@ static void App_OnStateChanged(uint8 newState)
     {
         /* Allow one more valid tag to request shutdown. */
         g_app.rfidTransitionLatched = FALSE;
+    }
+}
+
+static void App_HandleStateTransition1ms(void)
+{
+    if (g_app.currentState != g_app.lastHandledState)
+    {
+        App_OnStateChanged(g_app.currentState);
+        App_HandleStateEntry();
+        g_app.lastHandledState = g_app.currentState;
     }
 }
 
@@ -406,6 +413,35 @@ static void App_SaveCurrentPositionToActiveProfile(void)
 
     g_app.profileTable.profile[g_app.activeProfileIdx].seat_motor_angle =
         App_SeatTickToProfile(seatTick);
+}
+
+static void App_MergeReceivedProfileTable(const Shared_Profile_Table_t *profileTable)
+{
+    uint8 idx;
+
+    if (profileTable == NULL_PTR)
+    {
+        return;
+    }
+
+    for (idx = 0U; idx < SHARED_PROFILE_TOTAL_COUNT; ++idx)
+    {
+        if (idx == g_app.activeProfileIdx)
+        {
+            g_app.profileTable.profile[idx].profile_id =
+                profileTable->profile[idx].profile_id;
+            g_app.profileTable.profile[idx].ambient_light =
+                profileTable->profile[idx].ambient_light;
+            g_app.profileTable.profile[idx].ac_on_threshold =
+                profileTable->profile[idx].ac_on_threshold;
+            g_app.profileTable.profile[idx].heater_on_threshold =
+                profileTable->profile[idx].heater_on_threshold;
+        }
+        else
+        {
+            g_app.profileTable.profile[idx] = profileTable->profile[idx];
+        }
+    }
 }
 
 /* -------------------------------------------------------------------------------------------------
@@ -500,18 +536,16 @@ static void App_HandleButtons1ms(void)
     }
 }
 
-
-
 /* -------------------------------------------------------------------------------------------------
  * RFID / State handling
  * ------------------------------------------------------------------------------------------------- */
-static void App_HandleRfid10ms(void)
+static void App_HandleRfid1ms(void)
 {
     App_Manager_Rfid_Input_t in;
     in.register_flag = FALSE;
     in.profile_table = &g_app.profileTable;
     uint32 nowMs = App_GetNowMs();
-    
+
     App_Manager_Rfid_Run(nowMs, &in, &g_app.rfidOut);
     
     uint8 requestedProfileIdx;
@@ -625,7 +659,7 @@ static void App_HandleRfid10ms(void)
     }
 }
 
-static void App_HandleStateEntry100ms(void)
+static void App_HandleStateEntry(void)
 {
     switch (g_app.currentState)
     {
@@ -644,6 +678,10 @@ static void App_HandleStateEntry100ms(void)
 
     case SHARED_SYSTEM_STATE_SHUTDOWN:
         DoorActuator_Close(&g_app.door);
+        App_SaveCurrentPositionToActiveProfile();
+        g_app.txProfileTableRequested = TRUE;
+        App_ApplyProfileByIndex(SHARED_PROFILE_INDEX_DEFAULT);
+        UART_Printf("[STATE] shutdown -> save + default restore\r\n");
         break;
 
     case SHARED_SYSTEM_STATE_DENIED:
@@ -667,30 +705,9 @@ static void App_HandleStateSteady100ms(void)
         App_SaveCurrentPositionToActiveProfile();
         break;
 
-    case SHARED_SYSTEM_STATE_SHUTDOWN:
-        if (g_app.shutdownSaveIssued == FALSE)
-        {
-            /* TODO: 저장된 profile table CAN 송신 */
-            App_SaveCurrentPositionToActiveProfile();
-            g_app.txProfileTableRequested = TRUE;
-            g_app.shutdownSaveIssued      = TRUE;
-            break;
-        }
-
-        if (g_app.shutdownParkIssued == FALSE)
-        {
-            PositionAxis_Stop(&g_app.mirrorAxis);
-            PositionAxis_Stop(&g_app.seatAxis);
-
-            (void)PositionAxis_StartParkZero(&g_app.mirrorAxis);
-            (void)PositionAxis_StartParkZero(&g_app.seatAxis);
-
-            g_app.shutdownParkIssued = TRUE;
-        }
-        break;
-
     case SHARED_SYSTEM_STATE_SLEEP:
     case SHARED_SYSTEM_STATE_SETUP:
+    case SHARED_SYSTEM_STATE_SHUTDOWN:
     case SHARED_SYSTEM_STATE_DENIED:
     case SHARED_SYSTEM_STATE_EMERGENCY:
     default:
@@ -757,12 +774,13 @@ void App_Init(void)
 void AppTask1ms(void)
 {
     App_HandleCanRx1ms();
+    App_HandleStateTransition1ms();
 
     PositionAxis_Task1ms(&g_app.mirrorAxis);
     PositionAxis_Task1ms(&g_app.seatAxis);
 
     App_HandleButtons1ms();
-    App_HandleRfid10ms();
+    App_HandleRfid1ms();
     App_UpdateDebug();
 }
 
@@ -773,13 +791,6 @@ void AppTask10ms(void)
 
 void AppTask100ms(void)
 {
-    if (g_app.currentState != g_app.lastHandledState)
-    {
-        App_OnStateChanged(g_app.currentState);
-        App_HandleStateEntry100ms();
-        g_app.lastHandledState = g_app.currentState;
-    }
-
     App_HandleStateSteady100ms();
 }
 
@@ -875,21 +886,8 @@ static void App_HandleCanRx1ms(void)
                          rx_bytes,
                          sizeof(profile_table_msg));
 
-            /* 프로필 테이블 저장: 모터 값 이외의 것들만 갱신 */
-            if (g_app.activeProfileIdx < SHARED_PROFILE_TOTAL_COUNT)
-            {
-                g_app.profileTable.profile[g_app.activeProfileIdx].ac_on_threshold
-                                = profile_table_msg.profile[g_app.activeProfileIdx].ac_on_threshold;
-                g_app.profileTable.profile[g_app.activeProfileIdx].heater_on_threshold
-                                = profile_table_msg.profile[g_app.activeProfileIdx].heater_on_threshold;
-                g_app.profileTable.profile[g_app.activeProfileIdx].ambient_light
-                                = profile_table_msg.profile[g_app.activeProfileIdx].ambient_light;
-            }
-            else
-            {
-                UART_Printf("[RX] PROFILE_TABLE ignored invalid active idx=%u\r\n",
-                            g_app.activeProfileIdx);
-            }
+            /* Keep local active motor positions, but refresh the rest of the table. */
+            App_MergeReceivedProfileTable(&profile_table_msg);
 
             break;
         }
