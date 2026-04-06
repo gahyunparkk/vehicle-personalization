@@ -2,7 +2,7 @@
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
 #include "App_Can_Service.h"
-
+#include "App_Manager_System.h"
 #include "MCMCAN_FD.h"
 #include <string.h>
 
@@ -207,6 +207,21 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t   *rx_frame,
         }
 
         case SHARED_CAN_MSG_ID_AB_PROFILE_TABLE:
+        {
+            if (rx_frame->payload_size >= sizeof(Shared_Profile_Table_t))
+            {
+                Shared_Profile_Table_t profile_table;
+
+                (void)memset(&profile_table, 0, sizeof(Shared_Profile_Table_t));
+                (void)memcpy(&profile_table,
+                             rx_frame->payload,
+                             sizeof(Shared_Profile_Table_t));
+
+                App_Manager_System_UpdateProfileTableFromAb(&profile_table);
+            }
+            break;
+        }
+
         case SHARED_CAN_MSG_ID_HH_PROFILE_TABLE:
         {
             if (rx_frame->payload_size >= sizeof(Shared_Profile_Table_t))
@@ -218,7 +233,7 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t   *rx_frame,
                              rx_frame->payload,
                              sizeof(Shared_Profile_Table_t));
 
-                App_Manager_System_UpdateProfileTable(&profile_table);
+                App_Manager_System_UpdateProfileTableFromHh(&profile_table);
             }
             break;
         }

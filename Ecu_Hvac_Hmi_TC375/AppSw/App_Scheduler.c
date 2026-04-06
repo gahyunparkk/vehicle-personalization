@@ -138,7 +138,7 @@ static void App_Scheduler_Task_CanTx(void)
     if (App_Can_Service_BuildProfileTableFrame(&pft, &tx_frame) == TRUE)
     {
       (void)App_Can_Service_WriteFrame(&tx_frame);
-      UART_Printf("[TX] SS_PROFILE_TABLE sent\r\n");
+      UART_Printf("[TX] HH_PROFILE_TABLE sent\r\n");
     }
 
     g_app_scheduler_profile_table_tx_requested = FALSE;

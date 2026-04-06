@@ -2,7 +2,7 @@
 /*-----------------------------------------------------Includes------------------------------------------------------*/
 /*********************************************************************************************************************/
 #include "App_Can_Service.h"
-
+#include "App_Hvac.h"
 #include "MCMCAN_FD.h"
 #include <string.h>
 
@@ -191,6 +191,20 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t *rx_frame)
   }
 
   case SHARED_CAN_MSG_ID_SS_TEMP:
+  {
+    if (rx_frame->payload_size >= SHARED_CAN_MSG_SIZE_SS_TEMP)
+    {
+        Shared_Can_Temp_t temp_msg;
+
+        (void)memset(&temp_msg, 0, sizeof(Shared_Can_Temp_t));
+        (void)memcpy(&temp_msg,
+                    rx_frame->payload,
+                    sizeof(Shared_Can_Temp_t));
+
+        App_Manager_Hvac_updateTemp(temp_msg.temperature);
+    }
+    break;
+  }
 
   default:
   {
@@ -274,7 +288,7 @@ boolean App_Can_Service_BuildProfileTableFrame(const Shared_Profile_Table_t *pro
     return FALSE;
   }
 
-  if (App_Can_Service_InitFrame(SHARED_CAN_MSG_ID_SS_PROFILE_TABLE, tx_frame) == FALSE)
+  if (App_Can_Service_InitFrame(SHARED_CAN_MSG_ID_HH_PROFILE_TABLE, tx_frame) == FALSE)
   {
     return FALSE;
   }

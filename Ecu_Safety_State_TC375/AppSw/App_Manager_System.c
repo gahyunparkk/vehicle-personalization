@@ -45,6 +45,10 @@ static sint8   App_Manager_System_ConvertTemperatureToTxValue(sint16 temperature
 /* profile table */
 static void    App_Manager_System_CopyProfileTable(Shared_Profile_Table_t *dst,
                                                    const Shared_Profile_Table_t *src);
+static void    App_Manager_System_CopyMotorFields(Shared_Profile_Table_t *dst,
+                                                  const Shared_Profile_Table_t *src);
+static void    App_Manager_System_CopyComfortFields(Shared_Profile_Table_t *dst,
+                                                    const Shared_Profile_Table_t *src);
 static void    App_Manager_System_ClearProfileTable(Shared_Profile_Table_t *table);
 static void    App_Manager_System_LoadProfileTableFromDFlash(Shared_Profile_Table_t *profile_table);
 static void    App_Manager_System_SaveProfileTableToDFlash(const Shared_Profile_Table_t *profile_table);
@@ -53,7 +57,7 @@ static void    App_Manager_System_LoadDummyProfileTable(Shared_Profile_Table_t *
 /*********************************************************************************************************************/
 /*------------------------------------------------Static Variables---------------------------------------------------*/
 /*********************************************************************************************************************/
-static App_Manager_System_Context_t g_app_manager_system_context;
+App_Manager_System_Context_t g_app_manager_system_context;
 
 /*********************************************************************************************************************/
 /*------------------------------------------------Functions----------------------------------------------------------*/
@@ -67,6 +71,28 @@ void App_Manager_System_UpdateProfileTable(const Shared_Profile_Table_t *profile
 
     App_Manager_System_CopyProfileTable(&g_app_manager_system_context.profile_table,
                                         profile_table);
+}
+
+void App_Manager_System_UpdateProfileTableFromAb(const Shared_Profile_Table_t *profile_table)
+{
+    if (profile_table == NULL_PTR)
+    {
+        return;
+    }
+
+    App_Manager_System_CopyMotorFields(&g_app_manager_system_context.profile_table,
+                                       profile_table);
+}
+
+void App_Manager_System_UpdateProfileTableFromHh(const Shared_Profile_Table_t *profile_table)
+{
+    if (profile_table == NULL_PTR)
+    {
+        return;
+    }
+
+    App_Manager_System_CopyComfortFields(&g_app_manager_system_context.profile_table,
+                                         profile_table);
 }
 
 void App_Manager_System_GetProfileTable(Shared_Profile_Table_t *profile_table)
@@ -279,6 +305,41 @@ static void App_Manager_System_CopyProfileTable(Shared_Profile_Table_t *dst,
     for (index = 0U; index < SHARED_PROFILE_TOTAL_COUNT; index++)
     {
         dst->profile[index] = src->profile[index];
+    }
+}
+
+static void App_Manager_System_CopyMotorFields(Shared_Profile_Table_t *dst,
+                                               const Shared_Profile_Table_t *src)
+{
+    uint8 index;
+
+    if ((dst == NULL_PTR) || (src == NULL_PTR))
+    {
+        return;
+    }
+
+    for (index = 0U; index < SHARED_PROFILE_TOTAL_COUNT; index++)
+    {
+        dst->profile[index].side_motor_angle = src->profile[index].side_motor_angle;
+        dst->profile[index].seat_motor_angle = src->profile[index].seat_motor_angle;
+    }
+}
+
+static void App_Manager_System_CopyComfortFields(Shared_Profile_Table_t *dst,
+                                                 const Shared_Profile_Table_t *src)
+{
+    uint8 index;
+
+    if ((dst == NULL_PTR) || (src == NULL_PTR))
+    {
+        return;
+    }
+
+    for (index = 0U; index < SHARED_PROFILE_TOTAL_COUNT; index++)
+    {
+        dst->profile[index].ambient_light       = src->profile[index].ambient_light;
+        dst->profile[index].ac_on_threshold     = src->profile[index].ac_on_threshold;
+        dst->profile[index].heater_on_threshold = src->profile[index].heater_on_threshold;
     }
 }
 

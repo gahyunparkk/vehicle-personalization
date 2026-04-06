@@ -50,6 +50,8 @@ uint8                 App_Manager_System_GetActiveProfileIndex(void);
 
 /* 외부에서 CAN 수신 등의 결과로 RAM 프로필 테이블을 갱신할 때 사용 */
 void App_Manager_System_UpdateProfileTable(const Shared_Profile_Table_t *profile_table);
+void App_Manager_System_UpdateProfileTableFromAb(const Shared_Profile_Table_t *profile_table);
+void App_Manager_System_UpdateProfileTableFromHh(const Shared_Profile_Table_t *profile_table);
 
 /* 현재 RAM에 유지 중인 프로필 테이블 조회 */
 void App_Manager_System_GetProfileTable(Shared_Profile_Table_t *profile_table);

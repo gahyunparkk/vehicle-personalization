@@ -143,6 +143,7 @@ static uint8   App_SeatTickToProfile(sint32 seatTick);
 static void    App_ApplyProfileByIndex(uint8 profileIdx);
 static void    App_SaveCurrentPositionToActiveProfile(void);
 static void    App_MergeReceivedProfileTable(const Shared_Profile_Table_t *profileTable);
+static void    App_MergeReceivedHvacProfileTable(const Shared_Profile_Table_t *profileTable);
 
 static void    App_HandleButtons1ms(void);
 static void    App_HandleRfid1ms(void);
@@ -441,6 +442,26 @@ static void App_MergeReceivedProfileTable(const Shared_Profile_Table_t *profileT
         {
             g_app.profileTable.profile[idx] = profileTable->profile[idx];
         }
+    }
+}
+
+static void App_MergeReceivedHvacProfileTable(const Shared_Profile_Table_t *profileTable)
+{
+    uint8 idx;
+
+    if (profileTable == NULL_PTR)
+    {
+        return;
+    }
+
+    for (idx = 0U; idx < SHARED_PROFILE_TOTAL_COUNT; ++idx)
+    {
+        g_app.profileTable.profile[idx].ambient_light =
+            profileTable->profile[idx].ambient_light;
+        g_app.profileTable.profile[idx].ac_on_threshold =
+            profileTable->profile[idx].ac_on_threshold;
+        g_app.profileTable.profile[idx].heater_on_threshold =
+            profileTable->profile[idx].heater_on_threshold;
     }
 }
 
@@ -886,8 +907,15 @@ static void App_HandleCanRx1ms(void)
                          rx_bytes,
                          sizeof(profile_table_msg));
 
-            /* Keep local active motor positions, but refresh the rest of the table. */
-            App_MergeReceivedProfileTable(&profile_table_msg);
+            if (rx_id == SHARED_CAN_MSG_ID_SS_PROFILE_TABLE)
+            {
+                /* Keep local active motor positions, but refresh the rest of the table. */
+                App_MergeReceivedProfileTable(&profile_table_msg);
+            }
+            else
+            {
+                App_MergeReceivedHvacProfileTable(&profile_table_msg);
+            }
 
             break;
         }
@@ -1003,9 +1031,16 @@ static boolean App_PollProfileTableAtInit(uint32 timeout_ms)
                              rx_bytes,
                              sizeof(profile_table_msg));
 
-                (void)memcpy(&g_app.profileTable,
-                             &profile_table_msg,
-                             sizeof(Shared_Profile_Table_t));
+                if (rx_id == SHARED_CAN_MSG_ID_SS_PROFILE_TABLE)
+                {
+                    (void)memcpy(&g_app.profileTable,
+                                 &profile_table_msg,
+                                 sizeof(Shared_Profile_Table_t));
+                }
+                else
+                {
+                    App_MergeReceivedHvacProfileTable(&profile_table_msg);
+                }
 
                 return TRUE;
             }
