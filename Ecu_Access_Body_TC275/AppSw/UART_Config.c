@@ -36,7 +36,7 @@ void init_UART(void)
     IfxAsclin_Asc_Config ascConfig;
     IfxAsclin_Asc_initModuleConfig(&ascConfig, &MODULE_ASCLIN3);
 
-    ascConfig.baudrate.baudrate = 9600;
+    ascConfig.baudrate.baudrate = 115200;
     ascConfig.baudrate.oversampling = IfxAsclin_OversamplingFactor_16;
 
     ascConfig.interrupt.txPriority = ISR_PRIORITY_ASCLIN3_TX;

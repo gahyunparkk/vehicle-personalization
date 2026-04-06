@@ -37,7 +37,7 @@ void init_UART(void)
     IfxAsclin_Asc_initModuleConfig(&ascConfig, &MODULE_ASCLIN0);
 
     /* baudrate */
-    ascConfig.baudrate.baudrate = 9600;
+    ascConfig.baudrate.baudrate = 115200;
     ascConfig.baudrate.oversampling = IfxAsclin_OversamplingFactor_16;
 
     /* interrupt */
