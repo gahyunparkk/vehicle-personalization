@@ -98,7 +98,7 @@ static void LCD_init_static(void)
   writeoperation(OP_RETURN), delay_us(70);
 }
 
-void LCD_init(void)
+void App_Manager_LCD_Init(void)
 {
   LCD_init_static();
   LCD_init_static();

@@ -6,7 +6,7 @@
 #include "App_LCD.h"
 #include "Base_joystick.h"
 
-void UI_init(void);
-void UI_task(void);
+void App_Manager_UI_Init(void);
+void App_Manager_UI_Run(void);
 
 #endif

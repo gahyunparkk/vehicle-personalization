@@ -23,12 +23,12 @@ static char heatline[] = "+  Under       -";
 static char profline[] = "+  Profile 0   -";
 static uint8 profsel = 0;
 
-void UI_init(void)
+void App_Manager_UI_Init(void)
 {
-  LCD_init();
+  App_Manager_LCD_Init();
   LCD_clearScreen();
   Joystick_init();
-  Amb_init();
+  App_Manager_Ambient_Init();
   uistate = ST_PROFILE_SEL;
   coolline[11] = 0xDF;
   heatline[11] = 0xDF;
@@ -37,7 +37,7 @@ void UI_init(void)
   profsel = getCurrentProfile();
 }
 
-void UI_task(void)
+void App_Manager_UI_Run(void)
 {
   // 조이스틱 인식
   static joystick_dir_e prev = JOY_NEUTRAL, res = JOY_NEUTRAL;

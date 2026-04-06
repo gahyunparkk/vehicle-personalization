@@ -4,6 +4,6 @@
 #include "Ifx_Types.h"
 
 void AppScheduling(void);
-void Systeminit(void);
+void App_Init(void);
 
 #endif

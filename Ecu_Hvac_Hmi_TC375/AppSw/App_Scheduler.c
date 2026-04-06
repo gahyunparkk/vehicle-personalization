@@ -13,24 +13,24 @@ static void AppTask1ms(void)
 
 static void AppTask10ms(void)
 {
-  UI_task();
-  Amb_transition();
+  App_Manager_UI_Run();
+  App_Manager_Ambient_Run();
 }
 
 static void AppTask100ms(void)
 {
-  Hvac_updateHvac();
+  App_Manager_HVAC_Run();
 }
 
 static void AppTask1000ms(void)
 {
 }
 
-void Systeminit(void)
+void App_Init(void)
 {
   Driver_Stm_Init();
-  UI_init();
-  Hvac_init();
+  App_Manager_UI_Init();
+  App_Manaver_HVAC_Init();
 }
 
 void AppScheduling(void)

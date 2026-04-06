@@ -50,7 +50,7 @@ void core0_main(void)
   IfxCpu_emitEvent(&cpuSyncEvent);
   IfxCpu_waitEvent(&cpuSyncEvent, 1);
 
-  Systeminit();
+  App_Init();
 
   while (1)
   {

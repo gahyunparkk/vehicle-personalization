@@ -12,7 +12,7 @@ static int baseh, bases, basev;
 static int nowv;
 static boolean breathdesc;
 
-void Amb_init(void)
+void App_Manager_Ambient_Init(void)
 {
   initNeopixel();
   ambmode = AMB_CONSTANT;
@@ -44,7 +44,7 @@ void Amb_nextmode(void)
   }
 }
 
-void Amb_transition(void)
+void App_Manager_Ambient_Run(void)
 {
   static int cnt = PRESCALER;
   if (--cnt) return;

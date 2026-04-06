@@ -22,7 +22,7 @@ static void turnonCooling(void);
 static void turnonHeating(void);
 static void turnoff(void);
 
-void Hvac_init(void)
+void App_Manaver_HVAC_Init(void)
 {
   IfxPort_setPinModeOutput(BLUELED, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
   IfxPort_setPinModeOutput(REDLED, IfxPort_OutputMode_pushPull, IfxPort_OutputIdx_general);
@@ -59,7 +59,7 @@ uint8 Hvac_getCoolThreshold(void)
   return cool_threshold;
 }
 
-void Hvac_updateHvac(void)
+void App_Manager_HVAC_Run(void)
 {
   volatile uint8 temp = Hvac_getTemperature();
   if (temp >= cool_threshold + 2)
