@@ -17,7 +17,7 @@
 #include "Shared_Profile.h"
 #include "Shared_System_State.h"
 #include "Shared_Util_Time.h"
-#include "Shared_Can_Message.h"   /* 파일명이 다르면 실제 파일명에 맞게 수정 */
+#include "Shared_Can_Message.h"
 #include "MCMCAN_FD.h"
 #include "UART_Config.h"
 
@@ -47,11 +47,6 @@ static boolean App_Scheduler_IsValidUidIndex(uint8 uididx);
 static boolean App_Scheduler_Can_ReadFrame(Shared_Can_Frame_t *rx_frame);
 static boolean App_Scheduler_Can_WriteFrame(const Shared_Can_Frame_t *tx_frame);
 
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-static const char *App_Scheduler_GetStateString(uint8 state);
-static const char *App_Scheduler_GetMessageName(uint32 message_id);
-#endif
-
 /*********************************************************************************************************************/
 /*------------------------------------------------Static Variables---------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -64,19 +59,6 @@ static uint32                      g_app_scheduler_last_tx_state_ms         = 0u
 static uint32                      g_app_scheduler_last_tx_temp_ms          = 0u;
 static uint32                      g_app_scheduler_last_tx_profile_table_ms = 0u;
 
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-static uint32  g_app_scheduler_test_start_ms = 0u;
-
-static boolean g_app_scheduler_dummy_auth_sent      = FALSE;
-static boolean g_app_scheduler_dummy_shutdown_sent  = FALSE;
-
-static sint32  g_app_scheduler_prev_logged_state    = -1;
-static sint32  g_app_scheduler_prev_logged_profile  = -1;
-static sint32  g_app_scheduler_prev_logged_temp     = -128;
-static uint32  g_app_scheduler_prev_logged_state_ms = 0u;
-extern McmcanType g_mcmcan;
-#endif
-
 /*********************************************************************************************************************/
 /*------------------------------------------------Functions----------------------------------------------------------*/
 /*********************************************************************************************************************/
@@ -87,19 +69,7 @@ void App_Scheduler_Init(void)
     App_Manager_System_Init();
     App_Manager_Temp_Init();
 
-#if (APP_SCHEDULER_DUMMY_TEST == 0u)
     initMcmcan();
-#else
-    g_app_scheduler_now_ms               = Shared_Util_Time_GetNowMs();
-    g_app_scheduler_test_start_ms        = g_app_scheduler_now_ms;
-    g_app_scheduler_dummy_auth_sent      = FALSE;
-    g_app_scheduler_dummy_shutdown_sent  = FALSE;
-
-    g_app_scheduler_prev_logged_state    = -1;
-    g_app_scheduler_prev_logged_profile  = -1;
-    g_app_scheduler_prev_logged_temp     = -128;
-    g_app_scheduler_prev_logged_state_ms = 0u;
-#endif
 
     g_app_scheduler_last_tx_state_ms         = 0u;
     g_app_scheduler_last_tx_temp_ms          = 0u;
@@ -173,13 +143,7 @@ static void App_Scheduler_Run_1s(void)
 
     request_result = App_Manager_Temp_RequestUpdate();
 
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-    UART_Printf("[SCH] temp request at %lu ms (%s)\r\n",
-                g_app_scheduler_now_ms - g_app_scheduler_test_start_ms,
-                (request_result == TRUE) ? "accepted" : "busy");
-#else
     (void)request_result;
-#endif
 }
 
 static void App_Scheduler_Run_10s(void)
@@ -424,57 +388,6 @@ static void App_Scheduler_BuildProfileTableFrame(Shared_Can_Frame_t *tx_frame)
 /*********************************************************************************************************************/
 static boolean App_Scheduler_Can_ReadFrame(Shared_Can_Frame_t *rx_frame)
 {
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-    uint32 elapsed_ms;
-
-    if (rx_frame == NULL_PTR)
-    {
-        return FALSE;
-    }
-
-    elapsed_ms = g_app_scheduler_now_ms - g_app_scheduler_test_start_ms;
-
-    /* 3초: valid uididx -> SLEEP에서 auth_event_valid */
-    if ((g_app_scheduler_dummy_auth_sent == FALSE) && (elapsed_ms >= 3000u))
-    {
-        rx_frame->message_id   = SHARED_CAN_MSG_ID_AB_ACCESS_IDX;
-        rx_frame->dlc          = Shared_Can_GetDlc(rx_frame->message_id);
-        rx_frame->frame_size   = Shared_Can_GetFrameSize(rx_frame->message_id);
-        rx_frame->payload_size = Shared_Can_GetPayloadSize(rx_frame->message_id);
-        rx_frame->payload[0]   = SHARED_PROFILE_INDEX_1;
-
-        g_app_scheduler_dummy_auth_sent = TRUE;
-
-        UART_Printf("[DUMMY RX] %s at %lu ms, uididx=%u\r\n",
-                    App_Scheduler_GetMessageName(rx_frame->message_id),
-                    elapsed_ms,
-                    rx_frame->payload[0]);
-
-        return TRUE;
-    }
-
-    /* 12초: valid uididx -> ACTIVATED에서 shutdown_request */
-    if ((g_app_scheduler_dummy_shutdown_sent == FALSE) && (elapsed_ms >= 12000u))
-    {
-        rx_frame->message_id   = SHARED_CAN_MSG_ID_AB_ACCESS_IDX;
-        rx_frame->dlc          = Shared_Can_GetDlc(rx_frame->message_id);
-        rx_frame->frame_size   = Shared_Can_GetFrameSize(rx_frame->message_id);
-        rx_frame->payload_size = Shared_Can_GetPayloadSize(rx_frame->message_id);
-        rx_frame->payload[0]   = SHARED_PROFILE_INDEX_1;
-
-        g_app_scheduler_dummy_shutdown_sent = TRUE;
-
-        UART_Printf("[DUMMY RX] %s at %lu ms, uididx=%u\r\n",
-                    App_Scheduler_GetMessageName(rx_frame->message_id),
-                    elapsed_ms,
-                    rx_frame->payload[0]);
-
-        return TRUE;
-    }
-
-    return FALSE;
-
-#else
     uint32 rx_data[SHARED_CAN_MAX_DATA_WORD_SIZE];
     uint8  copy_size;
 
@@ -512,96 +425,11 @@ static boolean App_Scheduler_Can_ReadFrame(Shared_Can_Frame_t *rx_frame)
                  copy_size);
 
     return TRUE;
-#endif
 }
 
 
 static boolean App_Scheduler_Can_WriteFrame(const Shared_Can_Frame_t *tx_frame)
 {
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-    uint32 elapsed_ms;
-
-    if (tx_frame == NULL_PTR)
-    {
-        return FALSE;
-    }
-
-    elapsed_ms = g_app_scheduler_now_ms - g_app_scheduler_test_start_ms;
-
-    switch (tx_frame->message_id)
-    {
-        case SHARED_CAN_MSG_ID_SS_STATE:
-        {
-            sint32 current_state;
-            sint32 current_profile;
-
-            current_state   = (sint32)g_app_scheduler_system_output.current_state;
-            current_profile = (sint32)g_app_scheduler_system_output.active_profile_index;
-
-            if ((current_state != g_app_scheduler_prev_logged_state) ||
-                (current_profile != g_app_scheduler_prev_logged_profile) ||
-                ((elapsed_ms - g_app_scheduler_prev_logged_state_ms) >= 1000u))
-            {
-                UART_Printf("[TX] %s t=%lu ms, state=%u(%s), profile=%u\r\n",
-                            App_Scheduler_GetMessageName(tx_frame->message_id),
-                            elapsed_ms,
-                            g_app_scheduler_system_output.current_state,
-                            App_Scheduler_GetStateString(g_app_scheduler_system_output.current_state),
-                            g_app_scheduler_system_output.active_profile_index);
-
-                g_app_scheduler_prev_logged_state    = current_state;
-                g_app_scheduler_prev_logged_profile  = current_profile;
-                g_app_scheduler_prev_logged_state_ms = elapsed_ms;
-            }
-            break;
-        }
-
-        case SHARED_CAN_MSG_ID_SS_TEMP:
-        {
-            sint32 current_temp;
-
-            current_temp = (sint32)g_app_scheduler_system_output.temperature;
-
-            if (current_temp != g_app_scheduler_prev_logged_temp)
-            {
-                UART_Printf("[TX] %s t=%lu ms, local_temp=%d.%d C, out_temp=%d C\r\n",
-                            App_Scheduler_GetMessageName(tx_frame->message_id),
-                            elapsed_ms,
-                            (int)(g_app_scheduler_local_temperature_x10 / 10),
-                            (int)((g_app_scheduler_local_temperature_x10 >= 0) ?
-                                  (g_app_scheduler_local_temperature_x10 % 10) :
-                                  ((-g_app_scheduler_local_temperature_x10) % 10)),
-                            (int)g_app_scheduler_system_output.temperature);
-
-                g_app_scheduler_prev_logged_temp = current_temp;
-            }
-            break;
-        }
-
-        case SHARED_CAN_MSG_ID_SS_PROFILE_TABLE:
-        {
-            UART_Printf("[TX] %s t=%lu ms, payload=%u, frame=%u\r\n",
-                        App_Scheduler_GetMessageName(tx_frame->message_id),
-                        elapsed_ms,
-                        tx_frame->payload_size,
-                        tx_frame->frame_size);
-            break;
-        }
-
-        default:
-        {
-            UART_Printf("[TX] id=0x%03lX t=%lu ms, payload=%u, frame=%u\r\n",
-                        tx_frame->message_id,
-                        elapsed_ms,
-                        tx_frame->payload_size,
-                        tx_frame->frame_size);
-            break;
-        }
-    }
-
-    return TRUE;
-
-#else
     uint32 tx_data[SHARED_CAN_MAX_DATA_WORD_SIZE];
     uint8  copy_size;
 
@@ -625,67 +453,4 @@ static boolean App_Scheduler_Can_WriteFrame(const Shared_Can_Frame_t *tx_frame)
     transmitCanMessage(tx_frame->message_id, tx_data);
 
     return TRUE;
-#endif
 }
-
-/*********************************************************************************************************************/
-/*------------------------------------------------Dummy Print Helpers-----------------------------------------------*/
-/*********************************************************************************************************************/
-#if (APP_SCHEDULER_DUMMY_TEST == 1u)
-static const char *App_Scheduler_GetStateString(uint8 state)
-{
-    switch ((Shared_System_State_t)state)
-    {
-        case SHARED_SYSTEM_STATE_SLEEP:
-            return "SLEEP";
-
-        case SHARED_SYSTEM_STATE_SETUP:
-            return "SETUP";
-
-        case SHARED_SYSTEM_STATE_ACTIVATED:
-            return "ACTIVATED";
-
-        case SHARED_SYSTEM_STATE_SHUTDOWN:
-            return "SHUTDOWN";
-
-        case SHARED_SYSTEM_STATE_DENIED:
-            return "DENIED";
-
-        case SHARED_SYSTEM_STATE_EMERGENCY:
-            return "EMERGENCY";
-
-        default:
-            return "UNKNOWN";
-    }
-}
-
-static const char *App_Scheduler_GetMessageName(uint32 message_id)
-{
-    switch (message_id)
-    {
-        case SHARED_CAN_MSG_ID_SS_STATE:
-            return "SS_STATE";
-
-        case SHARED_CAN_MSG_ID_AB_ACCESS_IDX:
-            return "AB_ACCESS_IDX";
-
-        case SHARED_CAN_MSG_ID_HH_ACCESS_IDX:
-            return "HH_ACCESS_IDX";
-
-        case SHARED_CAN_MSG_ID_SS_TEMP:
-            return "SS_TEMP";
-
-        case SHARED_CAN_MSG_ID_SS_PROFILE_TABLE:
-            return "SS_PROFILE_TABLE";
-
-        case SHARED_CAN_MSG_ID_AB_PROFILE_TABLE:
-            return "AB_PROFILE_TABLE";
-
-        case SHARED_CAN_MSG_ID_HH_PROFILE_TABLE:
-            return "HH_PROFILE_TABLE";
-
-        default:
-            return "UNKNOWN_MSG";
-    }
-}
-#endif
