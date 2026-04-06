@@ -220,6 +220,32 @@ boolean App_Can_Service_BuildStateFrame(Shared_System_State_t current_state,
   return TRUE;
 }
 
+boolean App_Can_Service_BuildProfileIdxFrame(uint8 profile_idx,
+                                             Shared_Can_Frame_t *tx_frame)
+{
+  Shared_Can_Profile_Idx_t profile_idx_msg;
+
+  if ((profile_idx != SHARED_PROFILE_INDEX_INVALID) &&
+      (App_Can_Service_IsValidProfileIndex(profile_idx) == FALSE))
+  {
+    return FALSE;
+  }
+
+  if (App_Can_Service_InitFrame(SHARED_CAN_MSG_ID_HH_PROFILE_IDX, tx_frame) == FALSE)
+  {
+    return FALSE;
+  }
+
+  (void)memset(&profile_idx_msg, 0, sizeof(Shared_Can_Profile_Idx_t));
+  profile_idx_msg.profile_index = profile_idx;
+
+  (void)memcpy(tx_frame->payload,
+               &profile_idx_msg,
+               sizeof(Shared_Can_Profile_Idx_t));
+
+  return TRUE;
+}
+
 boolean App_Can_Service_BuildTempFrame(sint8 temperature,
                                        Shared_Can_Frame_t *tx_frame)
 {

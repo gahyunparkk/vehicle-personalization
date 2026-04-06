@@ -30,6 +30,9 @@ extern "C"
   boolean App_Can_Service_BuildStateFrame(Shared_System_State_t current_state,
                                           Shared_Can_Frame_t *tx_frame);
 
+  boolean App_Can_Service_BuildProfileIdxFrame(uint8 profile_idx,
+                                               Shared_Can_Frame_t *tx_frame);
+
   boolean App_Can_Service_BuildTempFrame(sint8 temperature,
                                          Shared_Can_Frame_t *tx_frame);
 
