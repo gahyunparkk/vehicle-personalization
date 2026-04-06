@@ -26,7 +26,7 @@ static void AppTask1000ms(void)
 {
 }
 
-void Systeminit(void)
+void App_Init(void)
 {
   Driver_Stm_Init();
   App_Manager_UI_Init();
