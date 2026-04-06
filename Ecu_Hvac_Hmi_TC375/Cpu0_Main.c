@@ -34,8 +34,6 @@
 IFX_ALIGN(4)
 IfxCpu_syncEvent cpuSyncEvent = 0;
 
-void AppScheduling(void);
-
 void core0_main(void)
 {
   IfxCpu_enableInterrupts();
@@ -50,10 +48,10 @@ void core0_main(void)
   IfxCpu_emitEvent(&cpuSyncEvent);
   IfxCpu_waitEvent(&cpuSyncEvent, 1);
 
-  App_Init();
+  App_Scheduler_Init();
 
   while (1)
   {
-    AppScheduling();
+    App_Scheduler_Run();
   }
 }
