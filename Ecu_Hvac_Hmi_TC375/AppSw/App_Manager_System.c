@@ -12,6 +12,7 @@
 
 #include "App_Can_Service.h"
 #include "Ifx_Types.h"
+#include "MCMCAN_FD.h"
 #include "Platform_Types.h"
 #include "UART_Config.h"
 
@@ -177,18 +178,19 @@ static boolean App_PollProfileTableAtInit(uint32 timeout_ms)
   uint32 rx_data[MAXIMUM_CAN_DATA_PAYLOAD];
   uint32 rx_id;
   const uint8 *rx_bytes;
-  uint32 start_ms;
+//  uint32 start_ms;
 
-  start_ms = App_GetNowMs();
+  // start_ms = App_GetNowMs();
 
-  while ((App_GetNowMs() - start_ms) < timeout_ms)
+  // while ((App_GetNowMs() - start_ms) < timeout_ms)
+  while (1)
   {
     if (receiveCanMessage(rx_data) == FALSE)
     {
       continue;
     }
 
-    rx_id = g_multican.rxMsg.id;
+    rx_id = g_mcmcan.rxMsg.messageId;
     rx_bytes = (const uint8 *)rx_data;
 
     switch (rx_id)

@@ -81,6 +81,7 @@ void App_Scheduler_Init(void)
   Driver_Stm_Init();
   App_Manager_UI_Init();
   App_Manaver_HVAC_Init();
+  initMcmcan();
   App_Manager_System_Init();
 }
 
