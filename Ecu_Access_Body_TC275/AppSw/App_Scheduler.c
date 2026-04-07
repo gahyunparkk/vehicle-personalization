@@ -47,6 +47,25 @@
 #define BUTTON_D23_PIN_IDX           ((uint8)IfxPort_P14_1.pinIndex)
 
 /* -------------------------------------------------------------------------------------------------
+ * Status LED mapping
+ * - Recommended external LEDs on free GPIOs
+ * - yellow : P13.0
+ * - red    : P13.1
+ * ------------------------------------------------------------------------------------------------- */
+#define STATUS_LED_ACTIVE_HIGH       1
+
+#define STATUS_LED_YELLOW_PORT       IfxPort_P13_0.port
+#define STATUS_LED_YELLOW_PIN_IDX    ((uint8)IfxPort_P13_0.pinIndex)
+
+#define STATUS_LED_RED_PORT          IfxPort_P13_1.port
+#define STATUS_LED_RED_PIN_IDX       ((uint8)IfxPort_P13_1.pinIndex)
+
+#define STATUS_LED_SUCCESS_HOLD_MS   (1000U)
+#define STATUS_LED_FAIL_HOLD_MS      (1000U)
+#define STATUS_LED_LOCKOUT_HOLD_MS   (5000U)
+#define STATUS_LED_BLINK_PERIOD_MS   (500U)
+
+/* -------------------------------------------------------------------------------------------------
  * Motion / actuator tuning
  * ------------------------------------------------------------------------------------------------- */
 #define MIRROR_MIN_TICK              (0)
@@ -78,6 +97,14 @@
 #define MIRROR_TICK_PER_PROFILE_UNIT (1)
 #define SEAT_TICK_PER_PROFILE_UNIT   (1)
 
+typedef enum
+{
+    STATUS_LED_MODE_OFF = 0,
+    STATUS_LED_MODE_SUCCESS,
+    STATUS_LED_MODE_FAIL,
+    STATUS_LED_MODE_LOCKOUT_BLINK
+} App_Status_Led_Mode_t;
+
 /* -------------------------------------------------------------------------------------------------
  * Runtime
  * ------------------------------------------------------------------------------------------------- */
@@ -97,6 +124,11 @@ typedef struct
     App_Manager_Rfid_Output_t rfidOut;
 
     boolean                rfidTransitionLatched;
+
+    App_Status_Led_Mode_t  statusLedMode;
+    uint32                 statusLedExpireMs;
+    uint32                 statusLedNextBlinkMs;
+    boolean                statusLedBlinkOn;
 
     /* CAN TX request */
     boolean                   txProfileIdxRequested;
@@ -132,6 +164,7 @@ static uint32  App_GetNowMs(void);
 
 static boolean App_ReadButton(Ifx_P *port, uint8 pinIdx);
 static void    App_InitButtons(void);
+static void    App_InitStatusLeds(void);
 static void    App_InitProfileTableDefault(void);
 static void    App_InitMirrorAxis(void);
 static void    App_InitSeatAxis(void);
@@ -155,12 +188,19 @@ static void    App_HandleButtons1ms(void);
 static void    App_HandleRfid1ms(void);
 static void    App_HandleStateEntry(void);
 static void    App_HandleStateSteady100ms(void);
+static void    App_HandleStatusLed100ms(void);
 static void    App_UpdateDebug(void);
 
 /* CAN placeholders */
 static void    App_HandleCanRx1ms(void);
 static void    App_HandleCanTx10ms(void);
 static boolean App_PollProfileTableAtInit(uint32 timeout_ms);
+static void    App_StatusLed_SetYellow(boolean on);
+static void    App_StatusLed_SetRed(boolean on);
+static void    App_StatusLed_SetAllOff(void);
+static void    App_StatusLed_StartSuccess(uint32 now_ms);
+static void    App_StatusLed_StartFail(uint32 now_ms);
+static void    App_StatusLed_StartLockout(uint32 now_ms);
 
 /* -------------------------------------------------------------------------------------------------
  * Helpers
@@ -195,6 +235,20 @@ static void App_InitButtons(void)
     IfxPort_setPinModeInput(BUTTON_D7_PORT,  BUTTON_D7_PIN_IDX,  IfxPort_InputMode_pullUp);
     IfxPort_setPinModeInput(BUTTON_D22_PORT, BUTTON_D22_PIN_IDX, IfxPort_InputMode_pullUp);
     IfxPort_setPinModeInput(BUTTON_D23_PORT, BUTTON_D23_PIN_IDX, IfxPort_InputMode_pullUp);
+}
+
+static void App_InitStatusLeds(void)
+{
+    IfxPort_setPinModeOutput(STATUS_LED_YELLOW_PORT,
+                             STATUS_LED_YELLOW_PIN_IDX,
+                             IfxPort_OutputMode_pushPull,
+                             IfxPort_OutputIdx_general);
+    IfxPort_setPinModeOutput(STATUS_LED_RED_PORT,
+                             STATUS_LED_RED_PIN_IDX,
+                             IfxPort_OutputMode_pushPull,
+                             IfxPort_OutputIdx_general);
+
+    App_StatusLed_SetAllOff();
 }
 
 static void App_InitProfileTableDefault(void)
@@ -597,6 +651,7 @@ static void App_HandleRfid1ms(void)
                 g_app.txProfileIdxValue     = requestedProfileIdx;
                 g_app.txProfileIdxRequested = TRUE;
                 g_app.rfidTransitionLatched = TRUE;
+                App_StatusLed_StartSuccess(nowMs);
 
                 UART_Printf("[RFID] auth idx=%u\r\n", requestedProfileIdx);
             }
@@ -607,6 +662,7 @@ static void App_HandleRfid1ms(void)
             break;
 
         case APP_MANAGER_RFID_EVENT_FAIL:
+            App_StatusLed_StartFail(nowMs);
             UART_Printf("[RFID] fail st=%u\r\n", g_app.currentState);
             break;
 
@@ -616,6 +672,7 @@ static void App_HandleRfid1ms(void)
                 g_app.txProfileIdxValue     = SHARED_PROFILE_INDEX_INVALID;
                 g_app.txProfileIdxRequested = TRUE;
                 g_app.rfidTransitionLatched = TRUE;
+                App_StatusLed_StartLockout(nowMs);
 
                 UART_Printf("[RFID] lockout -> denied req\r\n");
             }
@@ -648,6 +705,7 @@ static void App_HandleRfid1ms(void)
                 g_app.txProfileIdxValue     = requestedProfileIdx;
                 g_app.txProfileIdxRequested = TRUE;
                 g_app.rfidTransitionLatched = TRUE;
+                App_StatusLed_StartSuccess(nowMs);
 
                 UART_Printf("[RFID] shutdown req idx=%u\r\n", requestedProfileIdx);
             }
@@ -658,10 +716,12 @@ static void App_HandleRfid1ms(void)
             break;
 
         case APP_MANAGER_RFID_EVENT_FAIL:
+            App_StatusLed_StartFail(nowMs);
             UART_Printf("[RFID] fail st=%u\r\n", g_app.currentState);
             break;
 
         case APP_MANAGER_RFID_EVENT_LOCKOUT:
+            App_StatusLed_StartLockout(nowMs);
             UART_Printf("[RFID] lockout st=%u\r\n", g_app.currentState);
             break;
 
@@ -742,6 +802,46 @@ static void App_HandleStateSteady100ms(void)
     }
 }
 
+static void App_HandleStatusLed100ms(void)
+{
+    uint32 nowMs;
+
+    nowMs = App_GetNowMs();
+
+    switch (g_app.statusLedMode)
+    {
+    case STATUS_LED_MODE_SUCCESS:
+    case STATUS_LED_MODE_FAIL:
+        if (nowMs >= g_app.statusLedExpireMs)
+        {
+            g_app.statusLedMode = STATUS_LED_MODE_OFF;
+            App_StatusLed_SetAllOff();
+        }
+        break;
+
+    case STATUS_LED_MODE_LOCKOUT_BLINK:
+        if (nowMs >= g_app.statusLedExpireMs)
+        {
+            g_app.statusLedMode = STATUS_LED_MODE_OFF;
+            g_app.statusLedBlinkOn = FALSE;
+            App_StatusLed_SetAllOff();
+        }
+        else if (nowMs >= g_app.statusLedNextBlinkMs)
+        {
+            g_app.statusLedBlinkOn = (g_app.statusLedBlinkOn == FALSE) ? TRUE : FALSE;
+            g_app.statusLedNextBlinkMs = nowMs + STATUS_LED_BLINK_PERIOD_MS;
+
+            App_StatusLed_SetYellow(FALSE);
+            App_StatusLed_SetRed(g_app.statusLedBlinkOn);
+        }
+        break;
+
+    case STATUS_LED_MODE_OFF:
+    default:
+        break;
+    }
+}
+
 /* -------------------------------------------------------------------------------------------------
  * Debug
  * ------------------------------------------------------------------------------------------------- */
@@ -760,6 +860,91 @@ static void App_UpdateDebug(void)
     g_dbgDoorAngle        = DoorActuator_GetAngle(&g_app.door);
 }
 
+static void App_StatusLed_SetYellow(boolean on)
+{
+#if STATUS_LED_ACTIVE_HIGH
+    if (on != FALSE)
+    {
+        IfxPort_setPinHigh(STATUS_LED_YELLOW_PORT, STATUS_LED_YELLOW_PIN_IDX);
+    }
+    else
+    {
+        IfxPort_setPinLow(STATUS_LED_YELLOW_PORT, STATUS_LED_YELLOW_PIN_IDX);
+    }
+#else
+    if (on != FALSE)
+    {
+        IfxPort_setPinLow(STATUS_LED_YELLOW_PORT, STATUS_LED_YELLOW_PIN_IDX);
+    }
+    else
+    {
+        IfxPort_setPinHigh(STATUS_LED_YELLOW_PORT, STATUS_LED_YELLOW_PIN_IDX);
+    }
+#endif
+}
+
+static void App_StatusLed_SetRed(boolean on)
+{
+#if STATUS_LED_ACTIVE_HIGH
+    if (on != FALSE)
+    {
+        IfxPort_setPinHigh(STATUS_LED_RED_PORT, STATUS_LED_RED_PIN_IDX);
+    }
+    else
+    {
+        IfxPort_setPinLow(STATUS_LED_RED_PORT, STATUS_LED_RED_PIN_IDX);
+    }
+#else
+    if (on != FALSE)
+    {
+        IfxPort_setPinLow(STATUS_LED_RED_PORT, STATUS_LED_RED_PIN_IDX);
+    }
+    else
+    {
+        IfxPort_setPinHigh(STATUS_LED_RED_PORT, STATUS_LED_RED_PIN_IDX);
+    }
+#endif
+}
+
+static void App_StatusLed_SetAllOff(void)
+{
+    App_StatusLed_SetYellow(FALSE);
+    App_StatusLed_SetRed(FALSE);
+}
+
+static void App_StatusLed_StartSuccess(uint32 now_ms)
+{
+    g_app.statusLedMode = STATUS_LED_MODE_SUCCESS;
+    g_app.statusLedExpireMs = now_ms + STATUS_LED_SUCCESS_HOLD_MS;
+    g_app.statusLedBlinkOn = FALSE;
+    g_app.statusLedNextBlinkMs = 0U;
+
+    App_StatusLed_SetRed(FALSE);
+    App_StatusLed_SetYellow(TRUE);
+}
+
+static void App_StatusLed_StartFail(uint32 now_ms)
+{
+    g_app.statusLedMode = STATUS_LED_MODE_FAIL;
+    g_app.statusLedExpireMs = now_ms + STATUS_LED_FAIL_HOLD_MS;
+    g_app.statusLedBlinkOn = FALSE;
+    g_app.statusLedNextBlinkMs = 0U;
+
+    App_StatusLed_SetYellow(FALSE);
+    App_StatusLed_SetRed(TRUE);
+}
+
+static void App_StatusLed_StartLockout(uint32 now_ms)
+{
+    g_app.statusLedMode = STATUS_LED_MODE_LOCKOUT_BLINK;
+    g_app.statusLedExpireMs = now_ms + STATUS_LED_LOCKOUT_HOLD_MS;
+    g_app.statusLedNextBlinkMs = now_ms + STATUS_LED_BLINK_PERIOD_MS;
+    g_app.statusLedBlinkOn = TRUE;
+
+    App_StatusLed_SetYellow(FALSE);
+    App_StatusLed_SetRed(TRUE);
+}
+
 /* -------------------------------------------------------------------------------------------------
  * Public API
  * ------------------------------------------------------------------------------------------------- */
@@ -771,6 +956,7 @@ void App_Init(void)
     (void)memset(&g_app, 0, sizeof(g_app));
 
     App_InitButtons();
+    App_InitStatusLeds();
     App_InitProfileTableDefault();
     App_InitMirrorAxis();
     App_InitSeatAxis();
@@ -783,6 +969,10 @@ void App_Init(void)
     g_app.lastHandledState      = 0xFFU;
     g_app.activeProfileIdx      = SHARED_PROFILE_INDEX_INVALID;
     g_app.rfidTransitionLatched = FALSE;
+    g_app.statusLedMode         = STATUS_LED_MODE_OFF;
+    g_app.statusLedExpireMs     = 0U;
+    g_app.statusLedNextBlinkMs  = 0U;
+    g_app.statusLedBlinkOn      = FALSE;
 
     /* 초기화 시점에 SS_PROFILE_TABLE 1회 수신 시도, 20초 타임아웃 */
     (void)App_PollProfileTableAtInit(20000U);
@@ -817,6 +1007,7 @@ void AppTask100ms(void)
 {
     App_HandleCanRx1ms();
     App_HandleStateSteady100ms();
+    App_HandleStatusLed100ms();
     App_HandleCanTx10ms();
 }
 
