@@ -51,7 +51,7 @@
 #define MIRROR_MIN_TICK              (0U)
 #define MIRROR_MAX_TICK              (255U)
 #define MIRROR_JOG_STEP_TICK         (1)
-#define MIRROR_JOG_DUTY              (500U)
+#define MIRROR_JOG_DUTY              (550U)
 #define MIRROR_JOG_TIMEOUT_MS        (300U)
 #define MIRROR_JOG_TOL_TICK          (2)
 #define MIRROR_JOG_ISSUE_MS          (20U)
@@ -62,7 +62,7 @@
 #define SEAT_MIN_TICK                (0U)
 #define SEAT_MAX_TICK                (255U)
 #define SEAT_JOG_STEP_TICK           (1)
-#define SEAT_JOG_DUTY                (500U)
+#define SEAT_JOG_DUTY                (550U)
 #define SEAT_JOG_TIMEOUT_MS          (300U)
 #define SEAT_JOG_TOL_TICK            (2)
 #define SEAT_JOG_ISSUE_MS            (20U)
@@ -701,13 +701,8 @@ static void App_HandleStateEntry(void)
         DoorActuator_Close(&g_app.door);
         App_SaveCurrentPositionToActiveProfile();
         g_app.txProfileTableRequested = TRUE;
-        PositionAxis_Stop(&g_app.mirrorAxis);
-        PositionAxis_Stop(&g_app.seatAxis);
-        PositionAxis_ClearResult(&g_app.mirrorAxis);
-        PositionAxis_ClearResult(&g_app.seatAxis);
-        (void)PositionAxis_StartParkZero(&g_app.mirrorAxis);
-        (void)PositionAxis_StartParkZero(&g_app.seatAxis);
-        UART_Printf("[STATE] shutdown -> save + zero park\r\n");
+        App_ApplyProfileByIndex(SHARED_PROFILE_INDEX_DEFAULT);
+        UART_Printf("[STATE] shutdown -> save + default restore\r\n");
         break;
 
     case SHARED_SYSTEM_STATE_DENIED:
@@ -798,7 +793,7 @@ void App_Init(void)
 
 void AppTask1ms(void)
 {
-    App_HandleCanRx1ms();
+    
     App_HandleStateTransition1ms();
 
     PositionAxis_Task1ms(&g_app.mirrorAxis);
@@ -811,11 +806,13 @@ void AppTask1ms(void)
 
 void AppTask10ms(void)
 {
-    App_HandleCanTx10ms();
+
 }
 
 void AppTask100ms(void)
 {
+    App_HandleCanTx10ms();
+    App_HandleCanRx1ms();
     App_HandleStateSteady100ms();
 }
 

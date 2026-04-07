@@ -248,7 +248,7 @@ boolean PositionAxis_StartRestore(PositionAxis_t *a, sint32 targetTick)
     a->lastJogIssueStm   = 0U;
 
     if (!axisStartAbsoluteMove(a,
-                               0,
+                               a->restoreTargetTick,
                                a->restoreDuty,
                                a->restoreTimeoutMs,
                                a->restoreToleranceTicks,
@@ -258,7 +258,7 @@ boolean PositionAxis_StartRestore(PositionAxis_t *a, sint32 targetTick)
         return FALSE;
     }
 
-    a->mode = AXIS_MODE_RESTORE_TO_ZERO;
+    a->mode = AXIS_MODE_RESTORE_TO_TARGET;
     return TRUE;
 }
 
