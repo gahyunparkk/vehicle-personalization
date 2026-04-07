@@ -54,11 +54,11 @@
  * ------------------------------------------------------------------------------------------------- */
 #define STATUS_LED_ACTIVE_HIGH       1
 
-#define STATUS_LED_YELLOW_PORT       IfxPort_P13_0.port
-#define STATUS_LED_YELLOW_PIN_IDX    ((uint8)IfxPort_P13_0.pinIndex)
+#define STATUS_LED_YELLOW_PORT       IfxPort_P00_9.port
+#define STATUS_LED_YELLOW_PIN_IDX    ((uint8)IfxPort_P00_9.pinIndex)
 
-#define STATUS_LED_RED_PORT          IfxPort_P13_1.port
-#define STATUS_LED_RED_PIN_IDX       ((uint8)IfxPort_P13_1.pinIndex)
+#define STATUS_LED_RED_PORT          IfxPort_P00_2.port
+#define STATUS_LED_RED_PIN_IDX       ((uint8)IfxPort_P00_2.pinIndex)
 
 #define STATUS_LED_SUCCESS_HOLD_MS   (1000U)
 #define STATUS_LED_FAIL_HOLD_MS      (1000U)
