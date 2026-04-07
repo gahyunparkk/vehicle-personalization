@@ -37,6 +37,7 @@ uint8 Hvac_getHeatThreshold(void);
 uint8 Hvac_setCoolThreshold(sint8 th);
 uint8 Hvac_getCoolThreshold(void);
 void App_Manager_Hvac_updateTemp(sint8 temp);
+sint8 App_Manager_Hvac_getTemp(void);
 
 // 주기적으로 실행해야 할 함수
 void App_Manager_HVAC_Run(void);
@@ -118,4 +119,9 @@ static void turnoff(void)
 void App_Manager_Hvac_updateTemp(sint8 temp)
 {
   currentTemp = temp;
+}
+
+sint8 App_Manager_Hvac_getTemp(void)
+{
+  return currentTemp;
 }

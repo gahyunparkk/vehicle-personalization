@@ -10,7 +10,7 @@
 /*------------------------------------------------------Macros-------------------------------------------------------*/
 /*********************************************************************************************************************/
 #define SW_SHORTPRESS_10MS 3
-#define SW_LONGPRESS_10MS  100
+#define SW_LONGPRESS_10MS  200
 
 /*********************************************************************************************************************/
 /*--------------------------------------------Private Variables/Constants--------------------------------------------*/
@@ -24,9 +24,11 @@ static enum {
   ST_PROFILE_ADD
 } uistate;
 
-static char coolline[] = "+  Over        -";
-static char heatline[] = "+  Under       -";
-static char profline[] = "+  Profile 0   -";
+static char lowline[] = "    /+         -";
+static char lowlinebuf[17];
+static char coolline[] = "Over     ";
+static char heatline[] = "Undr     ";
+static char profline[] = " Prof  0 ";
 static uint8 profsel = 0;
 
 /*********************************************************************************************************************/
@@ -39,6 +41,7 @@ static void joyrtask(void);
 static void sw_shortpress(void);
 static void sw_longpress(void);
 static void profupdate(void);
+static void bufwrite(char *str);
 
 void App_Manager_UI_Init(void);
 void App_Manager_UI_Run(void);
@@ -46,19 +49,27 @@ void App_Manager_UI_Run(void);
 /*********************************************************************************************************************/
 /*---------------------------------------------Function Implementations----------------------------------------------*/
 /*********************************************************************************************************************/
+static void bufwrite(char *str)
+{
+  for (int i = 0; i < 17; i++) lowlinebuf[i] = lowline[i];
+  for (int i = 0; str[i]; i++) lowlinebuf[i + 6] = str[i];
+}
+
 void App_Manager_UI_Init(void)
 {
   App_Manager_LCD_Init();
   LCD_clearScreen();
-  LCD_printString("Inited", LOWERLINE);
+  LCD_printString("Wating for Msg..", LOWERLINE);
   Joystick_init();
   App_Manager_Ambient_Init();
   Amb_on();
   uistate = ST_PROFILE_SEL;
-  coolline[11] = 0xDF;
-  heatline[11] = 0xDF;
-  coolline[12] = 'C';
-  heatline[12] = 'C';
+  lowline[2] = 0xDF;
+  lowline[3] = 'C';
+  coolline[7] = 0xDF;
+  heatline[7] = 0xDF;
+  coolline[8] = 'C';
+  heatline[8] = 'C';
   App_Manager_System_GetActiveProfileIndex(&profsel);
 }
 
@@ -106,23 +117,30 @@ void App_Manager_UI_Run(void)
 
   // LCD 출력
   static uint8 th = 0;
+  static uint8 temp;
   static uint8 nowprof;
+  temp = App_Manager_Hvac_getTemp();
+  lowline[0] = (temp < 10 ? ' ' : (temp / 10) + '0');
+  lowline[1] = (temp % 10 + '0');
+
   switch (uistate)
   {
   case ST_PROFILE_SEL:
     LCD_printString("\x7FProfile Select\x7E", UPPERLINE);
-    profline[12] = profsel + '1';
+    profline[6] = profsel + '1';
     App_Manager_System_GetActiveProfileIndex(&nowprof);
     if (profsel == nowprof)
-      profline[2] = '[', profline[13] = ']';
+      profline[0] = '[', profline[7] = ']';
     else
-      profline[2] = ' ', profline[13] = ' ';
-    LCD_printString(profline, LOWERLINE);
+      profline[0] = ' ', profline[7] = ' ';
+    bufwrite(profline);
+    LCD_printString(lowlinebuf, LOWERLINE);
     break;
 
   case ST_AMB_COL_SEL:
     LCD_printString("\x7F Amb Col Set  \x7E", UPPERLINE);
-    LCD_printString("+    Color     -", LOWERLINE);
+    bufwrite("  Color  ");
+    LCD_printString(lowlinebuf, LOWERLINE);
     break;
 
   case ST_AMB_MOD_SEL:
@@ -132,19 +150,24 @@ void App_Manager_UI_Run(void)
     switch (ambmode)
     {
     case AMB_OFF:
-      LCD_printString("+     Off      -", LOWERLINE);
+      bufwrite("   Off   ");
+      LCD_printString(lowlinebuf, LOWERLINE);
       break;
     case AMB_CONSTANT:
-      LCD_printString("+   Constant   -", LOWERLINE);
+      bufwrite("Constant ");
+      LCD_printString(lowlinebuf, LOWERLINE);
       break;
     case AMB_BREATH:
-      LCD_printString("+    Breath    -", LOWERLINE);
+      bufwrite(" Breath  ");
+      LCD_printString(lowlinebuf, LOWERLINE);
       break;
     case AMB_WAVE_L:
-      LCD_printString("+  Wave(left)  -", LOWERLINE);
+      bufwrite(" Wave(1) ");
+      LCD_printString(lowlinebuf, LOWERLINE);
       break;
     case AMB_WAVE_R:
-      LCD_printString("+  Wave(Right) -", LOWERLINE);
+      bufwrite(" Wave(2) ");
+      LCD_printString(lowlinebuf, LOWERLINE);
       break;
     }
     break;
@@ -152,17 +175,19 @@ void App_Manager_UI_Run(void)
   case ST_COOLTEM_SEL:
     LCD_printString("\x7F Cooling When \x7E", UPPERLINE);
     th = Hvac_getCoolThreshold();
-    coolline[9] = (th < 10 ? ' ' : (th / 10) + '0');
-    coolline[10] = (th % 10 + '0');
-    LCD_printString(coolline, LOWERLINE);
+    coolline[5] = (th < 10 ? ' ' : (th / 10) + '0');
+    coolline[6] = (th % 10 + '0');
+    bufwrite(coolline);
+    LCD_printString(lowlinebuf, LOWERLINE);
     break;
 
   case ST_HEATTEM_SEL:
     LCD_printString("\x7F Heating When \x7E", UPPERLINE);
     th = Hvac_getHeatThreshold();
-    heatline[9] = (th < 10 ? ' ' : (th / 10) + '0');
-    heatline[10] = (th % 10 + '0');
-    LCD_printString(heatline, LOWERLINE);
+    heatline[5] = (th < 10 ? ' ' : (th / 10) + '0');
+    heatline[6] = (th % 10 + '0');
+    bufwrite(heatline);
+    LCD_printString(lowlinebuf, LOWERLINE);
     break;
 
   case ST_PROFILE_ADD:
@@ -320,8 +345,7 @@ static void profupdate(void)
   App_Manager_System_GetProfile(profidx, &newprofile);
   Amb_getmode(&ambmode);
   Amb_getHue(&hue);
-  hue >>= 1;
-  newprofile.ambient_light = (ambmode << 4 | hue);
+  newprofile.ambient_light = (ambmode << 8 | hue >> 1);
   newprofile.heater_on_threshold = Hvac_getHeatThreshold();
   newprofile.ac_on_threshold = Hvac_getCoolThreshold();
   App_Manager_System_SetProfile(profidx, &newprofile);

@@ -13,6 +13,7 @@
 #include "App_Amb.h"
 #include "App_Can_Service.h"
 #include "App_Hvac.h"
+#include "App_LCD.h"
 #include "Ifx_Types.h"
 #include "MCMCAN_FD.h"
 #include "Platform_Types.h"
@@ -82,7 +83,7 @@ void App_Manager_System_GetProfileTable(Shared_Profile_Table_t *profile_table)
 void App_Manager_System_SetActiveProfileIndex(uint8 idx)
 {
   g_app_manager_system_context.active_profile_index = idx;
-  Amb_setmode((g_app_manager_system_context.profile_table.profile[idx].ambient_light & 0xff00) >> 4);
+  Amb_setmode(g_app_manager_system_context.profile_table.profile[idx].ambient_light >> 8);
   Amb_setcolor2x(g_app_manager_system_context.profile_table.profile[idx].ambient_light & 0xff);
   Hvac_setCoolThreshold(g_app_manager_system_context.profile_table.profile[idx].ac_on_threshold);
   Hvac_setHeatThreshold(g_app_manager_system_context.profile_table.profile[idx].heater_on_threshold);
@@ -110,6 +111,24 @@ Shared_System_State_t App_Manager_System_GetState(void)
 void App_Manager_System_UpdateState(Shared_System_State_t state)
 {
   g_app_manager_system_context.current_state = state;
+  switch (state)
+  {
+  case SHARED_SYSTEM_STATE_SLEEP:
+    LCD_lightoff();
+    break;
+  case SHARED_SYSTEM_STATE_ACTIVATED:
+    LCD_lighton();
+    break;
+  case SHARED_SYSTEM_STATE_SHUTDOWN:
+    LCD_lightoff();
+    break;
+  case SHARED_SYSTEM_STATE_EMERGENCY:
+    LCD_printString("!!!EMERGENCY!!!!", UPPERLINE);
+    LCD_printString("!!!!EMERGENCY!!!", LOWERLINE);
+    Amb_setmode(AMB_BLINK);
+    Amb_setcolor2x(0);
+    break;
+  }
 }
 
 void App_Manager_System_GetProfile(uint8 idx, Shared_Profile_t *profile)

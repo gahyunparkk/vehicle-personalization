@@ -60,8 +60,19 @@ static void App_Scheduler_Run_1ms(void)
 
 static void App_Scheduler_Run_10ms(void)
 {
-  App_Manager_UI_Run();
-  App_Manager_Ambient_Run();
+  switch (App_Manager_System_GetState())
+  {
+  case SHARED_SYSTEM_STATE_SLEEP:
+    LCD_lightoff();
+    break;
+  case SHARED_SYSTEM_STATE_ACTIVATED:
+    App_Manager_UI_Run();
+    App_Manager_Ambient_Run();
+    break;
+  case SHARED_SYSTEM_STATE_EMERGENCY:
+    App_Manager_Ambient_Run();
+    break;
+  }
 }
 
 static void App_Scheduler_Run_100ms(void)
@@ -131,7 +142,9 @@ static void App_Scheduler_Task_CanTx(void)
   Shared_Can_Frame_t tx_frame;
   uint8 pf;
   Shared_Profile_Table_t pft;
-  
+  if (App_Manager_System_GetState == SHARED_SYSTEM_STATE_SLEEP)
+    return;
+
   if (g_app_scheduler_profile_table_tx_requested == TRUE)
   {
     App_Manager_System_GetProfileTable(&pft);
