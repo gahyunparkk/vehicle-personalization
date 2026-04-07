@@ -197,12 +197,17 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t   *rx_frame,
     switch (rx_frame->message_id)
     {
         case SHARED_CAN_MSG_ID_AB_PROFILE_IDX:
-        case SHARED_CAN_MSG_ID_HH_PROFILE_IDX:
         {
             if (rx_frame->payload_size >= SHARED_CAN_MSG_SIZE_PROFILE_IDX)
             {
                 App_Can_Service_HandleProfileIdx(rx_frame->payload[0], system_input);
             }
+            break;
+        }
+
+        case SHARED_CAN_MSG_ID_HH_PROFILE_IDX:
+        {
+            /* HH profile index is informational only and must not trigger SS state changes. */
             break;
         }
 
