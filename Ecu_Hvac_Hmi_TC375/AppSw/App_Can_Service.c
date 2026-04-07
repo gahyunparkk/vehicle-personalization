@@ -196,11 +196,11 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t *rx_frame)
                    sizeof(Shared_Can_State_t));
 
       App_Manager_System_UpdateState((Shared_System_State_t)state_msg.current_state);
+      UART_Printf("[RX] SS_STATE received %d\r\n", state_msg.current_state);
     }
     break;
   }
 
-  case SHARED_CAN_MSG_ID_HH_PROFILE_TABLE:
   case SHARED_CAN_MSG_ID_SS_PROFILE_TABLE:
   {
     /* Runtime에서는 HH comfort 소유값을 유지하고, init에서만 full copy 한다. */
@@ -211,14 +211,15 @@ void App_Can_Service_HandleRxFrame(const Shared_Can_Frame_t *rx_frame)
   {
     if (rx_frame->payload_size >= SHARED_CAN_MSG_SIZE_SS_TEMP)
     {
-        Shared_Can_Temp_t temp_msg;
+      Shared_Can_Temp_t temp_msg;
 
-        (void)memset(&temp_msg, 0, sizeof(Shared_Can_Temp_t));
-        (void)memcpy(&temp_msg,
-                    rx_frame->payload,
-                    sizeof(Shared_Can_Temp_t));
+      (void)memset(&temp_msg, 0, sizeof(Shared_Can_Temp_t));
+      (void)memcpy(&temp_msg,
+                   rx_frame->payload,
+                   sizeof(Shared_Can_Temp_t));
 
-        App_Manager_Hvac_updateTemp(temp_msg.temperature);
+      App_Manager_Hvac_updateTemp(temp_msg.temperature);
+      UART_Printf("[RX] SS_TEMP received %d\r\n", temp_msg.temperature);
     }
     break;
   }

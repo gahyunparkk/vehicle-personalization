@@ -80,7 +80,7 @@ static void App_Scheduler_Run_100ms(void)
   App_Scheduler_Task_CanRx();
   App_Scheduler_Task_System();
   App_Manager_HVAC_Run();
-  App_Scheduler_Task_CanTx();
+  // App_Scheduler_Task_CanTx();
 }
 
 static void App_Scheduler_Run_1s(void)
