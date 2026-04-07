@@ -350,14 +350,21 @@ void Motor_MoveService(MotorInstance_t *m)
     now     = IfxStm_get(BSP_DEFAULT_TIMER);
     elapsed = now - m->move.startStm;
     tgtDuty = m->move.requestedDuty;
+    finalError = (cur - m->move.originStartTicks) - m->move.finalTargetTicks;
+
+    if ((((finalError >= 0) ? finalError : -finalError)) <= m->move.toleranceTicks)
+    {
+        Motor_Brake(m);
+        m->move.appliedDuty = 0U;
+        m->move.state = MOTOR_MOVE_DONE;
+        return;
+    }
 
     if ((m->move.targetTicks > 0 && moved >= m->move.targetTicks) ||
         (m->move.targetTicks < 0 && moved <= m->move.targetTicks))
     {
         Motor_Brake(m);
         m->move.appliedDuty = 0U;
-
-        finalError = (Motor_GetTicks(m) - m->move.originStartTicks) - m->move.finalTargetTicks;
 
         if (Motor_TryStartCorrection(m, finalError))
         {
@@ -381,6 +388,12 @@ void Motor_MoveService(MotorInstance_t *m)
     {
         Motor_Brake(m);
         m->move.appliedDuty = 0U;
+
+        if (Motor_TryStartCorrection(m, finalError))
+        {
+            return;
+        }
+
         m->move.state = MOTOR_MOVE_TIMEOUT;
         return;
     }
