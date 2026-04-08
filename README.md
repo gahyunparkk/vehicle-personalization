@@ -160,4 +160,4 @@ GTM PWM을 이용한 속도 제어 및 GPIO 폴링 기반 인코더 카운팅을
 
 **Development Date**: 2026. 03. 25.  ~ 2026. 04. 07.
 
-**Confluence Link**: https://autoever-fibonacci.atlassian.net/wiki/external/ZGRjN2IwYWE1OTQxNDg2ZjkxZTVlYThlYWI1M2Y5ZWU
+**Confluence Link**: https://autoever-fibonacci.atlassian.net/wiki/external/OWY4MjM0MzE0ODU2NGYyMDljNmMyYjdlOWQ1YzY3MWU
