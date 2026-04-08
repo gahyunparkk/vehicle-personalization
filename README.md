@@ -157,6 +157,83 @@ GTM PWM을 이용한 속도 제어 및 GPIO 폴링 기반 인코더 카운팅을
     * `AppTask1ms`: 인코더 추적 및 버튼 조그 제어 (고속).
     * `AppTask10ms`: RFID 인증 로직 및 상태 전이 관리 (중속).
     * `AppTask100ms`: CAN 통신 처리 및 상태 LED 관리 (저속).
+ 
+---
+
+## 6. ECU 상세 명세: AURIX TC375 (HVAC & HMI)
+
+HVAC & HMI ECU는 차량 내부의 편의 기능(공조 시스템, 앰비언트 라이트) 제어와 사용자와의 상호작용을 위한 인터페이스(LCD, 조이스틱) 처리를 담당합니다.
+
+### 6.1. Application Software Layer (AppSW)
+
+#### 💡 Ambient Light Manager (`App_Amb.c/h`)
+네오픽셀 LED를 사용하여 차량 내부 분위기를 조성하며, 다양한 시각적 효과를 관리합니다.
+
+* **주요 열거형(Enum)**
+    * `Amb_mode_e`: 앰비언트 동작 모드 (`OFF`, `CONSTANT`, `BREATH`, `WAVE_L`, `WAVE_R`, `BLINK`)
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manager_Ambient_Init` | 앰비언트 라이트 초기 설정 (HSV 기본값 세팅) | `void` | `void` |
+| `App_Ambient_Nextmode` | 사용자 조작에 따른 다음 라이팅 모드 전환 | `void` | `void` |
+| `App_Manager_Ambient_Run` | 모드별 애니메이션(숨쉬기, 파도타기) 로직 업데이트 | `void` | `void` |
+| `App_Ambient_changeColor` | 색상(Hue) 값을 특정량만큼 변경 | `sint8 amount` | `void` |
+| `Amb_setmode` | 외부 요청(인증 등)에 의한 강제 모드 설정 | `Amb_mode_e mode` | `void` |
+
+#### ❄️ HVAC Manager (`App_Hvac.c/h`)
+실내 온도를 모니터링하여 설정된 임계값에 따라 팬(Fan)과 히터/에어컨(LED)을 제어합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manaver_HVAC_Init` | 공조 시스템 초기화 및 기본 온도 임계값 설정 | `void` | `void` |
+| `Hvac_setHeatThreshold` | 히터 작동 시작 온도 설정 | `sint8 th` | `uint8 (Error)` |
+| `Hvac_setCoolThreshold` | 에어컨 작동 시작 온도 설정 | `sint8 th` | `uint8 (Error)` |
+| `App_Manager_Hvac_updateTemp` | 센서로부터 수신된 현재 온도를 업데이트 | `sint8 temp` | `void` |
+| `App_Manager_HVAC_Run` | 현재 온도와 임계값을 비교하여 공조 장치 제어 | `void` | `void` |
+
+#### 🖥️ UI & LCD Manager (`App_UI.c/h`, `App_LCD.c/h`)
+I2C LCD와 조이스틱을 통해 사용자가 시스템 설정을 변경할 수 있는 HMI를 제공합니다.
+
+* **주요 열거형(Enum)**
+    * `uistate`: UI 페이지 상태 (`PROFILE_SEL`, `AMB_COL_SEL`, `AMB_MOD_SEL`, `COOLTEM_SEL`, `HEATTEM_SEL`, `PROFILE_ADD`)
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manager_UI_Init` | UI 초기화 및 조이스틱/LCD 모듈 시작 | `void` | `void` |
+| `App_Manager_UI_Run` | 조이스틱 입력 처리 및 LCD 화면 렌더링 | `void` | `void` |
+| `LCD_printString` | LCD 특정 라인에 문자열 출력 | `char *str, LCD_line_e line` | `void` |
+| `profupdate` | 변경된 UI 설정값을 시스템 프로필 테이블에 반영 | `void` | `void (Internal)` |
+
+#### 🧠 System Manager (`App_Manager_System.c/h`)
+전체 시스템 상태 동기화 및 프로필 데이터 무결성을 관리합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manager_System_Init` | 시스템 컨텍스트 초기화 및 초기 프로필 폴링 시작 | `void` | `void` |
+| `App_Manager_System_UpdateState` | 시스템 상태에 따른 LCD 백라이트 및 비상 출력 제어 | `Shared_System_State_t state` | `void` |
+| `App_Manager_System_SetActiveProfileIndex` | 활성화된 사용자 인덱스 설정 및 관련 편의설정 즉시 적용 | `uint8 idx` | `void` |
+| `App_Manager_System_UpdateProfileTable` | CAN 수신 데이터를 통해 RAM 내 프로필 테이블 동기화 | `const Shared_Profile_Table_t *table` | `void` |
+
+---
+
+### 6.2. Communication Service (`App_Can_Service.c/h`)
+
+TC375가 수신하는 다양한 CAN 프레임을 파싱하여 적절한 매니저 함수로 라우팅합니다.
+
+| 함수명 | 상세 내용 | 수신 ID / 처리 내용 |
+| :--- | :--- | :--- |
+| `App_Can_Service_HandleRxFrame` | CAN ID 기반 로직 분기 | `AB_PROFILE_IDX`, `SS_STATE`, `SS_TEMP` 등 |
+| `App_Can_Service_BuildProfileIdxFrame` | 변경된 프로필 인덱스 송신용 생성 | `SHARED_CAN_MSG_ID_HH_PROFILE_IDX` |
+| `App_Can_Service_BuildProfileTableFrame` | 변경된 편의 사양 테이블 송신용 생성 | `SHARED_CAN_MSG_ID_HH_PROFILE_TABLE` |
+
+---
+
+### 6.3. Scheduler (`App_Scheduler.c`)
+
+* **10ms Task**: UI 갱신, 조이스틱 입력 처리, 앰비언트 라이트 애니메이션 업데이트.
+* **100ms Task**: CAN RX/TX 처리, 시스템 상태 감시, HVAC 온도 제어 로직 실행.
+* **Init (Polling)**: 초기 구동 시 `App_PollProfileTableAtInit`을 통해 타 ECU로부터 최신 프로필 데이터를 수신할 때까지 대기하여 데이터 동기화를 보장합니다.
+
 
 **Development Date**: 2026. 03. 25.  ~ 2026. 04. 07.
 
