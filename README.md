@@ -266,6 +266,94 @@ CAN FD를 통한 데이터 송수신을 담당합니다. (64바이트 지원)
     * `AB_PROFILE_IDX`: Access 보드에서 받은 인증 결과를 바탕으로 사용자 프로필 즉시 적용.
 
 
+---
+
+## 7. ECU 상세 명세: AURIX TC375 (Safety & State)
+
+Safety & State ECU는 시스템의 중앙 제어기 역할을 수행합니다. 전체 시스템의 상태 머신(FSM)을 관리하고, 온도 센서를 통한 안전 모니터링, 그리고 사용자 프로필 데이터를 DFLASH에 영구 저장하는 기능을 담당합니다.
+
+### 7.1. Application Software Layer (AppSW)
+
+#### 🧠 System Manager (`App_Manager_System.c/h`)
+전체 시스템의 동작 상태(FSM)와 사용자 프로필 데이터의 무결성을 관리하는 핵심 엔진입니다.
+
+* **주요 열거형(Enum) 및 구조체(Struct)**
+    * `Shared_System_State_t`: 전체 상태 (`SLEEP`, `SETUP`, `ACTIVATED`, `SHUTDOWN`, `DENIED`, `EMERGENCY`)
+    * `App_Manager_System_Input_t`: `{ boolean auth_event_valid, boolean shutdown_request, uint8 active_profile_index }`
+    * `App_Manager_System_Output_t`: `{ uint8 current_state, sint8 temperature, uint8 active_profile_index, Shared_Profile_Table_t profile_table }`
+    * `App_Manager_System_Context_t`: 시스템 런타임 정보 및 DFLASH 로드 상태 관리
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manager_System_Init` | 컨텍스트 초기화 및 DFLASH에서 기존 프로필 테이블 로드 | `void` | `void` |
+| `App_Manager_System_Run` | 온도 및 입력을 바탕으로 FSM 전이 및 프로필 업데이트 수행 | `uint32 now_ms, sint16 local_temp_x10, const App_Manager_System_Input_t *input, App_Manager_System_Output_t *output` | `void` |
+| `App_Manager_System_GetState` | 현재 시스템의 중앙 상태 정보를 반환 | `void` | `Shared_System_State_t` |
+| `App_Manager_System_UpdateProfileTableFromAb` | Access 보드로부터 수신한 모터 제어 필드만 선택적 업데이트 | `const Shared_Profile_Table_t *profile_table` | `void` |
+
+#### 🌡️ Temperature Manager (`App_Manager_Temp.c/h`)
+DS18B20 센서 드라이버를 제어하여 실시간 온도를 획득하고 유효성을 검증합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Manager_Temp_Init` | 온도 매니저 및 하위 DS18B20 드라이버 초기화 | `void` | `void` |
+| `App_Manager_Temp_Run` | 비동기 온도 측정 시퀀스(Convert -> Read) 실행 관리 | `void` | `void` |
+| `App_Manager_Temp_RequestUpdate` | 새로운 온도 측정 사이클 시작을 드라이버에 요청 | `void` | `boolean` |
+| `App_Manager_Temp_GetLatestTemp_X10` | 가장 최근에 측정된 정수형 온도값($\times 10$) 획득 | `sint16 *temperature_x10` | `boolean` |
+
+#### 🛰️ Communication Service (`App_Can_Service.c/h`)
+중앙 제어에 필요한 CAN FD 메시지의 패킹 및 언패킹을 담당합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `App_Can_Service_HandleRxFrame` | 수신된 CAN ID(AB_IDX, HH_TABLE 등)에 따른 시스템 입력 생성 | `const Shared_Can_Frame_t *rx_frame, App_Manager_System_Input_t *system_input` | `void` |
+| `App_Can_Service_BuildStateFrame` | 현재 중앙 시스템 상태 송신용 CAN 프레임 생성 | `Shared_System_State_t current_state, Shared_Can_Frame_t *tx_frame` | `boolean` |
+
+---
+
+### 7.2. Base Software Layer (BaseSW)
+
+#### 💾 Flash EEPROM Emulation (`Base_Fee.c/h`)
+DFLASH를 활용하여 전원이 차단되어도 사용자 설정을 유지할 수 있도록 하는 저장소 계층입니다.
+
+* **주요 구조체(Struct)**
+    * `Fee_Profile_Header_t`: `{ uint16 magic, uint8 version, uint8 checksum, uint32 sequence }`
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `Flash_LoadProfileTable` | DFLASH 내 슬롯 중 최신 시퀀스 번호를 가진 유효 데이터 로드 | `Shared_Profile_Table_t *outTable` | `Fee_Status_t` |
+| `Flash_SaveProfileTable` | 빈 슬롯을 찾아 체크섬과 함께 프로필 저장 (가득 차면 섹터 삭제) | `const Shared_Profile_Table_t *inTable` | `Fee_Status_t` |
+
+#### 🌡️ DS18B20 & One-Wire Driver (`Base_Driver_Ds18b20.c`, `Base_Com_OneWire.c`)
+1-Wire 프로토콜을 비트배깅 방식으로 구현하여 온도 센서와 통신합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `Base_Com_OneWire_Reset` | 1-Wire 버스 리셋 및 장치 존재(Presence) 확인 | `Base_Com_OneWire_t *oneWire` | `uint8` |
+| `Base_Com_OneWire_Search` | 버스에 연결된 장치의 64비트 ROM ID 검색 | `Base_Com_OneWire_t *oneWire, uint8 command` | `uint8` |
+| `Base_Driver_Ds18b20_MainFunction` | 상태 머신 기반으로 온도를 읽는 비동기 함수 | `Base_Driver_Ds18b20_Context_t *context` | `void` |
+
+#### ⏲️ System Timer & Scheduler (`Base_Driver_Stm.c`, `App_Scheduler.c`)
+시스템의 멀티레이트 태스크 스케줄링을 담당합니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `Base_Driver_Stm_Isr` | 1ms 하드웨어 인터럽트 내에서 주기별 플래그 생성 | `void` | `void (ISR)` |
+| `App_Scheduler_Run` | 1ms(Time), 10ms(Temp), 100ms(System/CAN), 1s(Temp Req) 태스크 분배 | `void` | `void` |
+
+#### 🏎️ MCMCAN FD Driver (`MCMCAN_FD.c`)
+64바이트 데이터 전송을 위한 CAN FD 하드웨어 추상화 계층입니다.
+
+| 함수명 | 상세 내용 | 입력 파라미터 | 반환값 |
+| :--- | :--- | :--- | :--- |
+| `transmitCanMessage` | CAN FD 메시지 송신 (64바이트 롱 프레임 사용) | `uint32 txId, const uint32 *pData` | `boolean` |
+| `receiveCanMessage` | 수신 FIFO에서 데이터를 읽어오고 UART 로그 출력 | `uint32 *rxData` | `boolean` |
+
+---
+
+### 7.3. Safety Logic: Emergency Mode
+`App_Manager_System.c` 내부의 `IsEmergencyRequired` 로직에 의해 온도가 **50.0°C(500 x10)** 이상으로 감지될 경우, 시스템은 즉시 `EMERGENCY` 상태로 전환됩니다. 이 상태에서 시스템은 하위 ECU에 비상 신호를 전송하여 도어 개방 및 하드웨어 안전 위치 이동을 강제합니다.
+
+
 **Development Date**: 2026. 03. 25.  ~ 2026. 04. 07.
 
 **Confluence Link**: https://autoever-fibonacci.atlassian.net/wiki/external/OWY4MjM0MzE0ODU2NGYyMDljNmMyYjdlOWQ1YzY3MWU
