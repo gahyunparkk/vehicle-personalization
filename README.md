@@ -72,7 +72,8 @@ project_root/
 ├─ Tools/
 │   └─ Sync_Shared.sh
 ├─ .gitignore
-└─ README.md```
+└─ README.md
+```
 
 ---
 
