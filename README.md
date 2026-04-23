@@ -36,6 +36,7 @@
 4. **SHUTDOWN**: 하차 시 현재 설정을 DFLASH에 최종 기록 후 슬립 복귀
 5. **EMERGENCY**: 화재 감지 시 즉시 전이하여 도어 개방 및 탈출 환경 조성
 6. **DENIED**: 인증 실패 상태로, 시각적 경고 후 슬립 모드 복귀
+<img width="775" height="439" alt="Image" src="https://github.com/user-attachments/assets/42c17ea6-9853-4030-94e9-a7dccd16f829" />
 
 ---
 
