@@ -135,6 +135,32 @@ project_root/
 
 ---
 
+## 📡 CAN FD Message Specification
+
+분산 제어 환경에서의 ECU 간 데이터 동기화 및 상태 제어를 위해 정의된 CAN FD 메시지 구조입니다.
+
+<details>
+<summary>🔍 CAN Message List (Communication Matrix)</summary>
+
+| 메시지명 | CAN ID | 송신 | 수신 | Payload | DLC | 주기 | 전송 조건 | 비고 |
+| :--- | :---: | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
+| **MSG_SS_STATE** | 0x100 | SS | AB, HH | system_state (1B) | 1 | 10ms | Time | 시스템 기준 상태 브로드캐스트 |
+| **MSG_AB_AUTH_PROFILE_IDX** | 0x200 | AB | SS, HH | auth_profile_idx (1B) | 1 | - | Event | RFID 인증 결과 전달 (성공: idx, 실패: invalid) |
+| **MSG_HH_PROFILE_IDX** | 0x201 | HH | SS, AB | selected_profile_idx (1B) | 1 | - | Event | HMI에서 선택/변경된 profile idx 전달 |
+| **MSG_SS_TEMP** | 0x300 | SS | HH | temperature (1B) | 1 | 1000ms | Time | 실시간 온도 정수값 전송 |
+| **MSG_SS_PROFILE_TABLE** | 0x400 | SS | AB, HH | profile_table (40B) | 14 | - | Event | SETUP 시 또는 테이블 변경 시 송신 |
+| **MSG_AB_PROFILE_TABLE** | 0x401 | AB | HH, SS | profile_table (40B) | 14 | 100ms | Time | 인증 결과 반영 후 필요 시 송신 |
+| **MSG_HH_PROFILE_TABLE** | 0x402 | HH | AB, SS | profile_table (40B) | 14 | - | Event | HMI 수정 반영 후 필요 시 송신 |
+
+</details>
+
+### 💡 통신 설계 핵심
+- **Multi-Rate Scheduling**: 시스템 상태(10ms), 온도(1000ms), 프로필 업데이트(100ms) 등 데이터의 중요도와 변화 주기에 따라 전송 레이트를 최적화했습니다.
+- **Event-Driven Update**: RFID 인증이나 HMI 조작과 같은 사용자 이벤트 발생 시 즉각적으로 데이터를 전송하여 시스템 응답성을 높였습니다.
+- **Large Payload (CAN FD)**: 40B 크기의 대용량 프로필 테이블을 전송하기 위해 CAN FD 프레임(DLC 14)을 활용하여 통신 효율을 극대화했습니다.
+
+---
+
 ## 📅 Development Period
 
 * Date: 2026. 03. 25. ~ 2026. 04. 07.
