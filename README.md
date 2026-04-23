@@ -78,6 +78,63 @@ project_root/
 
 ---
 
+## 📍 Hardware Pin Mapping
+
+<details>
+<summary>🔍 1. Infineon AURIX TC275 ShieldBuddy (Access / Body)</summary>
+
+| 모듈 | 기능 | Arduino 핀 | MCU 핀 | 라벨 | 모드 | 비고 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **MFRC522** | RFID CS(SDA) | D42 | P11.10 | BASE_COM_QSPI1_CS | Output | |
+| | RFID SCLK(SCK) | D47 | P11.6 | BASE_COM_QSPI1_SCLK | Output | |
+| | RFID MOSI | D41 | P11.9 | BASE_COM_QSPI1_MTSR | Output | |
+| | RFID MISO | D46 | P11.3 | BASE_COM_QSPI1_MRST | Input | |
+| **Encoder A** | Encoder | D39 | P00.7 | MOTOR_A_ENC | Input | 시트/미러 제어 |
+| | 모터 PWM | D3 | P02.1 | MOTOR_A_PWM | Output | TOM1_9_TOUT1 |
+| | 모터 Brake | D9 | P02.7 | MOTOR_A_BRAKE | Output | |
+| | 모터 Direction | D12 | P10.1 | MOTOR_A_DIR | Output | |
+| **Encoder B** | Encoder | D4 | P10.4 | MOTOR_B_ENC | Input | 시트/미러 제어 |
+| | 모터 PWM | D11 | P10.3 | MOTOR_B_PWM | Output | TOM0_3_TOUT105 |
+| | 모터 Brake | D8 | P02.6 | MOTOR_B_BRAKE | Output | |
+| | 모터 Direction | D13 | P10.2 | MOTOR_B_DIR | Output | |
+| **SG90** | 서보모터 PWM | D5 | P02.3 | SERVO_PWM | Output | TOM1_11_TOUT3 |
+| **Switch** | 매뉴얼 조그 (4ea) | D6, D7, D22, D23 | - | SW_JOG | Input | 사이드미러/시트 조절 |
+| **CAN** | CAN TX / RX | - | P20.8 / P20.7 | CAN_TX / RX | Comm. | 트랜시버 연결 필수 |
+| **LED** | 상태 표시 RED / YEL | D29 / D28 | P00.2 / P00.9 | STATUS_LED | Output | 인증 실패 / 성공 |
+
+</details>
+
+<details>
+<summary>🔍 2. Infineon AURIX TC375 Lite Kit (HVAC / HMI)</summary>
+
+| 모듈 | 기능 | Arduino 핀 | MCU 핀 | 라벨 | 모드 | 비고 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Joystick** | 조이스틱 X축 | A5 | P40.9 | - | Analog | EVADC 8.7 |
+| | 조이스틱 Y축 | A4 | P40.8 | - | Analog | EVADC 8.6 |
+| | 조이스틱 스위치 | A3 | P40.7 | JOYSW | Input | |
+| **DC Fan** | 냉난방 팬 PWM | D3 | P02.1 | - | Output | TOM0_9_TOUT1 |
+| **Red LED** | 난방 표시 LED | D12 | P10.1 | REDLED | Output | Active-low |
+| **Blue LED** | 냉방 표시 LED | D13 | P10.2 | BLUELED | Output | Active-low |
+| **Neopixel** | 앰비언트 MOSI | D11 | P10.3 | - | QSPI | WS2812B 연동 |
+| **LCD1602** | LCD SCL / SDA | SCL / SDA | P13.1 / P13.2 | MCP_SCL / SDA | I2C | Open-drain |
+| **CAN** | CAN TX / RX | - | P20.8 / P20.7 | CAN_TX / RX | Comm. | |
+
+</details>
+
+<details>
+<summary>🔍 3. Infineon AURIX TC375 Lite Kit (Safety / State Control)</summary>
+
+| 모듈 | 기능 | Arduino 핀 | MCU 핀 | 라벨 | 모드 | 비고 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Buzzer** | 버저 PWM | D10 | P10.5 | - | Output | TOM0_2_TOUT107 |
+| **SW-420** | 충격센서 DO | D11 | P10.3 | SHOCK_IN | Input | ERU 인터럽트 |
+| **DS18B20** | 온도 센서 DAT | - | P02.1 | TEMP_DATA | OpenDrain | 4.7kΩ Pull-up 필수 |
+| **CAN** | CAN TX / RX | - | P20.8 / P20.7 | CAN_TX / RX | Comm. | |
+
+</details>
+
+---
+
 ## 📅 Development Period
 
 * Date: 2026. 03. 25. ~ 2026. 04. 07.
