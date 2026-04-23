@@ -154,6 +154,8 @@ project_root/
 
 </details>
 
+<img width="1137" height="485" alt="Image" src="https://github.com/user-attachments/assets/659a94dc-2012-4a92-a56d-624c5e636f45" />
+
 ### 💡 통신 설계 핵심
 - **Multi-Rate Scheduling**: 시스템 상태(10ms), 온도(1000ms), 프로필 업데이트(100ms) 등 데이터의 중요도와 변화 주기에 따라 전송 레이트를 최적화했습니다.
 - **Event-Driven Update**: RFID 인증이나 HMI 조작과 같은 사용자 이벤트 발생 시 즉각적으로 데이터를 전송하여 시스템 응답성을 높였습니다.
