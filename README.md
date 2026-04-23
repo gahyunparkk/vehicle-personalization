@@ -1,4 +1,4 @@
-# 🚗 Profile-based Vehicle Personalization System (AURIX TC2xx/TC3xx)
+# 🚗 Profile-based Vehicle Personalization System
 
 > **"사용자 인식부터 비상 탈출 시나리오까지, Infineon AURIX 기반의 SDV 초개인화 통합 제어 시스템"**
 
