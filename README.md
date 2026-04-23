@@ -49,3 +49,9 @@
 ### Communication & Protocol
 * **CAN FD**: 64-byte 롱 프레임을 활용한 대용량 프로필 데이터 전송
 * **SPI / I2C / 1-Wire**: 각종 센서 및 디바이스 통신 표준 적용
+
+---
+
+## 📅 Development Period
+
+* Date: 2026. 03. 25. ~ 2026. 04. 07.
