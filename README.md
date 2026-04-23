@@ -52,6 +52,30 @@
 
 ---
 
+## 📁 Repository Structure
+```
+project_root/
+├─ Shared/                          ← 공통 인터페이스 원본
+├─ Docs/                            ← 공식 문서
+├─ Ecu_Safety_State_TC375/          ← ADS 프로젝트 단위
+│   ├─ AppSw/
+│   ├─ BaseSw/
+│   ├─ Shared/                      ← 원본에서 복사
+│   ├─ Cpu0_Main.c
+│   ├─ Cpu1_Main.c
+│   └─ Cpu2_Main.c
+├─ Ecu_Access_Body_TC275/
+│   └─ (동일 구조)
+├─ Ecu_Hvac_Hmi_TC375/
+│   └─ (동일 구조)
+├─ Integration/
+├─ Tools/
+│   └─ Sync_Shared.sh
+├─ .gitignore
+└─ README.md```
+
+---
+
 ## 📅 Development Period
 
 * Date: 2026. 03. 25. ~ 2026. 04. 07.
